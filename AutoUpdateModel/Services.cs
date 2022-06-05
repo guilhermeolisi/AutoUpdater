@@ -1,32 +1,32 @@
 ﻿using BaseLibrary;
 using System.IO.Compression;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace AutoUpdaterModel;
 
 public static class Services
 {
-    public static string ProcessArg(string[] args, out Version versionOld, out Version versionNew, out string urlToDownload, out string folderToInstall, out string urlToVerifyVersion, out string emailToReportIssue, out string nameProgram)
+    public static string ProcessArg(string[] args, out Version versionOld, out Version versionNew, out string urlToDownload, out string folderToInstall, out string emailToReportIssue, out string nameProgram)
     {
 
         if (args.Length == 0)
         {
             versionOld = versionNew = null;
-            urlToDownload = urlToVerifyVersion = folderToInstall = emailToReportIssue = nameProgram = null;
+            urlToDownload = folderToInstall = emailToReportIssue = nameProgram = null;
             return "no argument";
         }
         else if (args.Length != 7)
         {
             versionOld = versionNew = null;
-            urlToDownload = urlToVerifyVersion = folderToInstall = emailToReportIssue = nameProgram = null;
+            urlToDownload =  folderToInstall = emailToReportIssue = nameProgram = null;
             return "It is necessary three arguments: old Version; new Version; url; folder to install; emai to report issue; url to verify AutoUpdater Version; name of program";
         }
 
         urlToDownload = args[2];
         folderToInstall = args[3];
         emailToReportIssue = args[4];
-        urlToVerifyVersion = args[5];
-        nameProgram = args[6];
+        nameProgram = args[5];
 
         if (!Version.TryParse(args[0], out versionOld))
         {
@@ -114,8 +114,8 @@ public static class Services
                 }
                 catch (Exception e)
                 {
-                    string message = "Problem trying unzip file. Try to do it manually. Path file: " + file + Environment.NewLine + e.Message;
-                    return message;
+                    string error = "Problem trying unzip file. Try to do it manually. Path file: " + file + Environment.NewLine + e.Message;
+                    return error;
                 }
                 if (File.Exists(file))
                     File.Delete(file);
@@ -141,6 +141,26 @@ public static class Services
         }
         return null;
     }
+    
+    public static int CheckOS()
+    {
+        //windows, linux, macos
+        int os = -1;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            os = 0;
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            os = 1;
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            os = 2;
+        }
+        return os;
+    }
+
     private static string Permission(string fileExecute)
     {
 
@@ -151,4 +171,5 @@ public static class Services
         }
         return null;
     }
+
 }

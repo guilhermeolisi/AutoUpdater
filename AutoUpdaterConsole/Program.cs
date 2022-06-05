@@ -6,6 +6,7 @@ using AutoUpdaterModel;
 using BaseLibrary;
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 CultureInfo culture = CultureInfo.InvariantCulture;
 Thread.CurrentThread.CurrentCulture = culture;
@@ -14,43 +15,39 @@ Thread.CurrentThread.CurrentUICulture = culture;
 CultureInfo.DefaultThreadCurrentCulture = culture;
 CultureInfo.DefaultThreadCurrentUICulture = culture;
 
-PlatformID platform;
-bool is64x = false;
-int os = -1;
-
-(platform, os, is64x) = SystemUtility.OSCheck();
+//windows, linux, macos
+int os = Services.CheckOS();
 
 Version versionOld, versionNew;
-string urlToDownload, folderToInstall, urlToVerifyVersion, emailToReportIssue, nameProgram;
+string urlToDownload, folderToInstall, emailToReportIssue, nameProgram;
 bool isFirst = true;
 string error;
+
 //Processa argumentos
-if (args.Length == 7)
+if (args.Length == 6)
 {
-    error = Services.ProcessArg(args, out versionOld, out versionNew, out urlToDownload, out folderToInstall, out urlToVerifyVersion, out emailToReportIssue, out nameProgram);
+    error = Services.ProcessArg(args, out versionOld, out versionNew, out urlToDownload, out folderToInstall, out emailToReportIssue, out nameProgram);
     if (string.IsNullOrWhiteSpace(error))
     {
-        WriteError(error);
+        ProcessError(error);
         return;
     }
     //Verifica conexão com internet
     if (!HTTPMethods.IsConnectedToInternetPing())
     {
-        WriteError("The computer don't have acess to internet");
+        ProcessError("The computer don't have acess to internet");
         return;
     }
 }
 else
 {
     versionOld = versionNew = null;
-    urlToDownload = folderToInstall = urlToVerifyVersion = emailToReportIssue = nameProgram = null;
+    urlToDownload = folderToInstall = emailToReportIssue = nameProgram = null;
 }
 
 Console.WriteLine($"Updating the {nameProgram} from {versionOld} to {versionNew} version");
 
-
-string toUpdateSufixFile = " - to update.zip";
-string folderRepository = Path.GetDirectoryName(Assembly.GetAssembly(typeof(Program)).Location);
+string folderRepository = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 folderRepository = Path.Combine(folderRepository, "Repository");
 if (!Directory.Exists(folderRepository))
 {
@@ -66,10 +63,12 @@ if (!string.IsNullOrWhiteSpace(urlToDownload))
     DownloadNewVersion(urlToDownload, fileNameDownloaded);
 }
 
+//Atualiza os arquivos
 error = Services.ReplaceFiles(folderToInstall, folderRepository, os);
+
 if (!string.IsNullOrWhiteSpace(error))
 {
-    WriteError(error);
+    ProcessError(error);
     return;
 }
 
@@ -115,12 +114,15 @@ void downloadProgressChanged(int progressPercentage)
 {
     ConsoleUtility.WriteProgressBar(progressPercentage, true);
 }
-void WriteError(string message)
+void ProcessError(string message)
 {
-    Console.ForegroundColor = ConsoleColor.Green;
+    Console.ForegroundColor = ConsoleColor.Red;
     Console.WriteLine("A error was found, the instalation/update will be aborted");
     Console.ResetColor();
     Console.WriteLine("Error message:");
     Console.WriteLine(message);
+
+    if (!string.IsNullOrWhiteSpace(emailToReportIssue))
+        ExceptionMethods.SendException(emailToReportIssue, new Exception(message), false, null);
 }
 #endregion

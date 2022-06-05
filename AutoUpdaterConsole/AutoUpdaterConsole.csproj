@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\BaseLibrary\BaseLibraryConsole\BaseLibraryConsole.csproj" />
+    <ProjectReference Include="..\..\BaseLibrary\BaseLibraryException\BaseLibraryException.csproj" />
     <ProjectReference Include="..\..\BaseLibrary\BaseLibraryHTTP\BaseLibraryHTTP.csproj" />
     <ProjectReference Include="..\AutoUpdateModel\AutoUpdaterModel.csproj" />
   </ItemGroup>
