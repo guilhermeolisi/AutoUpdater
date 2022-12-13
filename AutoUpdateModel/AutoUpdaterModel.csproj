@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\BaseLibrary\BaseLibraryConsole\BaseLibraryConsole.csproj" />
-    <ProjectReference Include="..\..\BaseLibrary\BaseLibraryFile\BaseLibraryFile.csproj" />
+    <ProjectReference Include="..\..\BaseLibrary\BaseLibraryConsole\BaseLibrary.Console.csproj" />
+    <ProjectReference Include="..\..\BaseLibrary\BaseLibraryFile\BaseLibrary.File.csproj" />
   </ItemGroup>
 
 </Project>

@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\BaseLibrary\BaseLibraryHTTP\BaseLibraryHTTP.csproj" />
+    <ProjectReference Include="..\..\BaseLibrary\BaseLibraryHTTP\BaseLibrary.HTTP.csproj" />
     <ProjectReference Include="..\AutoUpdateModel\AutoUpdaterModel.csproj" />
   </ItemGroup>
 
