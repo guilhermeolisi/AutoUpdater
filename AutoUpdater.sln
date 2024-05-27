@@ -13,11 +13,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoUpdaterGUI", "AutoUpdat
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Base", "Base", "{2705C76B-218F-44A9-A7B8-9115CB385CF9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BaseLibraryConsole", "..\BaseLibrary\BaseLibraryConsole\BaseLibraryConsole.csproj", "{FAB0E91A-ACF1-417C-8367-D0E6C05C1E78}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BaseLibraryConsole", "..\BaseLibrary\BaseLibraryConsole\BaseLibrary.Console.csproj", "{FAB0E91A-ACF1-417C-8367-D0E6C05C1E78}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BaseLibraryFile", "..\BaseLibrary\BaseLibraryFile\BaseLibraryFile.csproj", "{C18FE033-FE13-4582-AB26-6FB42BBCA9F8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BaseLibraryFile", "..\BaseLibrary\BaseLibraryFile\BaseLibrary.File.csproj", "{C18FE033-FE13-4582-AB26-6FB42BBCA9F8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BaseLibraryHTTP", "..\BaseLibrary\BaseLibraryHTTP\BaseLibraryHTTP.csproj", "{1579FB19-7C0A-46CF-8E12-ACBAA438A55A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BaseLibraryHTTP", "..\BaseLibrary\BaseLibraryHTTP\BaseLibrary.HTTP.csproj", "{1579FB19-7C0A-46CF-8E12-ACBAA438A55A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
