@@ -164,7 +164,7 @@ public static class Services
     private static string Permission(string fileExecute)
     {
 
-        if (!ConsoleUtility.ExecCommandLine("chmod", " 700 " + fileExecute, false, false, false, false))
+        if (!ConsoleUtility.ExecCommandLine("chmod", " 700 " + fileExecute, null, false, false, false, false))
         {
             string message = "An error was returned while trying to give the SindarinInstaller execute permission. try to do it manually before continuing the upgrade. Path file: " + fileExecute;
             return message;
