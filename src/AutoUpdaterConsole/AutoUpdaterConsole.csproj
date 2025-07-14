@@ -9,9 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\BaseLibrary\BaseLibraryConsole\BaseLibrary.Console.csproj" />
-    <ProjectReference Include="..\..\BaseLibrary\BaseLibraryException\BaseLibrary.Exception.csproj" />
-    <ProjectReference Include="..\..\BaseLibrary\BaseLibraryHTTP\BaseLibrary.HTTP.csproj" />
+    <ProjectReference Include="..\..\..\BaseLibrary\src\BaseLibrary.Console\BaseLibrary.Console.csproj" />
+    <ProjectReference Include="..\..\..\BaseLibrary\src\BaseLibrary.Exception\BaseLibrary.Exception.csproj" />
+    <ProjectReference Include="..\..\..\BaseLibrary\src\BaseLibrary.HTTP\BaseLibrary.HTTP.csproj" />
     <ProjectReference Include="..\AutoUpdateModel\AutoUpdaterModel.csproj" />
   </ItemGroup>
 

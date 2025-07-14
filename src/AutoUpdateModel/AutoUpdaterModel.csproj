@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\BaseLibrary\src\BaseLibrary.HTTP\BaseLibrary.HTTP.csproj" />
-    <ProjectReference Include="..\AutoUpdateModel\AutoUpdaterModel.csproj" />
+    <ProjectReference Include="..\..\..\BaseLibrary\src\BaseLibrary.Console\BaseLibrary.Console.csproj" />
+    <ProjectReference Include="..\..\..\BaseLibrary\src\BaseLibrary.File\BaseLibrary.File.csproj" />
   </ItemGroup>
 
 </Project>
