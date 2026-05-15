@@ -1,266 +1,331 @@
-﻿using AutoUpdaterModel;
+using AutoUpdaterModel;
 using BaseLibrary;
 using System.Diagnostics;
+using System.Globalization;
 using System.Reflection;
-using System.Runtime.InteropServices;
 
 namespace AutoUpdaterHelp;
 
 public static class AutoUpdater
 {
-    //https://drive.google.com/uc?export=download&id=FILEID
-    public static (Version newVersion, string message, string urlToDownload) HasNewVersion(string urlVersion, TimeSpan Frequency)
-    {
+    private static readonly string folderAutoUpdaterSufix = "AutoUpdater";
+    private static readonly string[] autoUpdateExec = { "AutoUpdaterConsole" };
 
-        string message = null;
-        //Verifica conexão com internet
-        if (!HTTPMethods.IsConnectedToInternetPing())
-        {
-            message = "The computer don't have acess to internet to verify new version";
-            return ReturnWhenError(message);
-        }
-#if DEBUG
-        var trash = Assembly.GetExecutingAssembly();
-        var trash2 = Assembly.GetCallingAssembly();
-        var trash3 = Assembly.GetEntryAssembly();
-#endif
-        //windows, linux, macos
+    /// <summary>
+    /// Checks whether a newer version of the calling program is available online.
+    /// </summary>
+    /// <param name="manifestUrl">URL of the JSON version manifest (e.g. Azure Blob Storage URL).</param>
+    /// <param name="frequency">Minimum interval between online checks.</param>
+    public static UpdateCheckResult HasNewVersion(string manifestUrl, TimeSpan frequency)
+    {
+        if (string.IsNullOrWhiteSpace(manifestUrl))
+            return new UpdateCheckResult { Message = "manifestUrl is required" };
+
         int os = Services.CheckOS();
+        if (os < 0)
+            return new UpdateCheckResult { Message = "Unsupported operating system" };
 
         var program = Assembly.GetEntryAssembly();
+        UpdaterLog.Init(program?.GetName().Name);
+        Version verCurrent = program?.GetName().Version;
+
+        if (!Connectivity.IsEndpointReachable(manifestUrl))
+        {
+            UpdaterLog.Warn($"HasNewVersion: manifest endpoint unreachable: {manifestUrl}");
+            return new UpdateCheckResult
+            {
+                CurrentVersion = verCurrent,
+                Message = "The manifest endpoint is not reachable. Check internet connection or firewall."
+            };
+        }
+
         string folderProgram = Path.GetDirectoryName(program.Location);
         if (!Directory.Exists(folderProgram))
-        {
-            message = "The folder of program was not found: " + folderProgram;
-            return ReturnWhenError(message);
-        }
-        string folder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            return new UpdateCheckResult
+            {
+                CurrentVersion = verCurrent,
+                Message = "The folder of program was not found: " + folderProgram
+            };
+
         string fileLastVerification = Path.Combine(folderProgram, "LastVerificationVersion");
-        //folder = Path.Combine(folder, "Version");
         if (File.Exists(fileLastVerification))
         {
-            DateTime dateTime = File.GetCreationTime(fileLastVerification);
-            if ((DateTime.Now - dateTime) < Frequency)
+            DateTime lastCheck = ReadLastVerification(fileLastVerification);
+            if ((DateTime.UtcNow - lastCheck) < frequency)
             {
 #if !DEBUG
-                return ReturnWhenError(null);
+                return new UpdateCheckResult { CurrentVersion = verCurrent };
 #endif
             }
-            File.Delete(fileLastVerification);
-
         }
+
         try
         {
-            File.WriteAllText(fileLastVerification, "");
+            File.WriteAllText(fileLastVerification, DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture));
         }
         catch (Exception ex)
         {
-
+            Console.Error.WriteLine($"Could not write last-verification timestamp: {ex.Message}");
         }
 
-        Version verOnline;
-        string urlToDownload;
+        VersionManifest manifest;
         try
         {
-            GetVersionOnline(urlVersion, os, folderProgram, out verOnline, out urlToDownload);
+            manifest = DownloadManifest(manifestUrl, folderProgram);
         }
         catch (Exception ex)
         {
-            message = ex.Message;
-            return ReturnWhenError(message);
+            UpdaterLog.Error("HasNewVersion: failed to download/parse manifest", ex);
+            return new UpdateCheckResult { CurrentVersion = verCurrent, Message = ex.Message };
         }
 
-        Version verCurret = program.GetName().Version;
+        if (!Version.TryParse(manifest.Version, out Version verOnline))
+            return new UpdateCheckResult
+            {
+                CurrentVersion = verCurrent,
+                Message = $"Manifest version is not in a valid format: '{manifest.Version}'"
+            };
 
-        bool hasNewVersion = verOnline > verCurret;
+        Version verMinimum = null;
+        if (!string.IsNullOrWhiteSpace(manifest.MinimumVersion))
+        {
+            if (!Version.TryParse(manifest.MinimumVersion, out verMinimum))
+                UpdaterLog.Warn($"HasNewVersion: ignoring invalid minimumVersion '{manifest.MinimumVersion}'");
+        }
 
-        return (hasNewVersion ? verOnline : null, message, urlToDownload);
+        bool hasNewVersion = verOnline > verCurrent;
+        UpdaterLog.Info($"HasNewVersion: current={verCurrent} online={verOnline} minimum={verMinimum?.ToString() ?? "none"} hasNew={hasNewVersion}");
 
+        return new UpdateCheckResult
+        {
+            NewVersion = hasNewVersion ? verOnline : null,
+            CurrentVersion = verCurrent,
+            MinimumVersion = verMinimum
+        };
     }
-    private static (Version newVersion, string error, string urlToDownload) ReturnWhenError(string error)
+
+    private static DateTime ReadLastVerification(string filePath)
     {
-        return (null, error, null);
+        try
+        {
+            string content = File.ReadAllText(filePath);
+            if (DateTime.TryParse(content, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTime parsed))
+                return parsed.ToUniversalTime();
+        }
+        catch
+        {
+            // Ignore — fall back to file timestamp.
+        }
+        return File.GetLastWriteTimeUtc(filePath);
     }
-    //https://drive.google.com/file/d/1Qb2hT8HaCavf5sIu8gs03qNgVm5oflV-/view?usp=sharing
-    static readonly string urlVersionAutoUpdater = "https://drive.google.com/uc?export=download&id=1Qb2hT8HaCavf5sIu8gs03qNgVm5oflV-";
-    static readonly string folderAutoUpdaterSufix = "AutoUpdater";
-    static readonly string[] autoUpdateExec = { "AutoUpdaterConsole", "AutoUpdaterGUI" };
+
     /// <summary>
-    /// 
+    /// Ensures the AutoUpdater itself is present and up to date.
     /// </summary>
-    /// <returns>error message</returns>
-    public static string VerifyUpdateOfAutoUpdater(Action<int> downloadNotifier)
+    /// <param name="manifestUrlAutoUpdater">URL of the AutoUpdater JSON manifest (e.g. Azure Blob Storage URL).</param>
+    /// <param name="downloadNotifier">Optional callback receiving download progress percentage.</param>
+    /// <returns>Error message, or null on success.</returns>
+    public static string VerifyUpdateOfAutoUpdater(string manifestUrlAutoUpdater, Action<int> downloadNotifier)
     {
-        //windows, linux, macos
+        if (string.IsNullOrWhiteSpace(manifestUrlAutoUpdater))
+            return "manifestUrlAutoUpdater is required";
+
         int os = Services.CheckOS();
+        if (os < 0)
+            return "Unsupported operating system";
 
         var program = Assembly.GetEntryAssembly();
+        UpdaterLog.Init(program?.GetName().Name);
+
+        if (!Connectivity.IsEndpointReachable(manifestUrlAutoUpdater))
+        {
+            UpdaterLog.Warn($"VerifyUpdateOfAutoUpdater: manifest endpoint unreachable: {manifestUrlAutoUpdater}");
+            return "The AutoUpdater manifest endpoint is not reachable. Check internet connection or firewall.";
+        }
+
         var folderProgram = Path.GetDirectoryName(program.Location);
         var folderAutoUpdater = Path.Combine(folderProgram, folderAutoUpdaterSufix);
-        bool needUpdate = false;
 
-        string urlToDownloadUpdater = null;
-        string error;
-        Version verOnlineUpdater = null;
-        Version verCurrentUpdater = null;
+        VersionManifest manifest;
+        try
+        {
+            manifest = DownloadManifest(manifestUrlAutoUpdater, folderProgram);
+        }
+        catch (Exception ex)
+        {
+            return "Could not get AutoUpdater manifest online: " + ex.Message;
+        }
+
+        if (!Version.TryParse(manifest.Version, out Version verOnlineUpdater))
+            return $"AutoUpdater manifest version is not in a valid format: '{manifest.Version}'";
+
+        if (!manifest.Artifacts.TryGetValue(OsKey.FromIndex(os), out ArtifactInfo artifact))
+            return $"AutoUpdater manifest has no artifact for OS '{OsKey.FromIndex(os)}'";
+
+        bool needUpdate;
         if (!Directory.Exists(folderAutoUpdater))
         {
             needUpdate = true;
         }
         else
         {
-            //Verifica a versão online
-            GetVersionOnline(urlVersionAutoUpdater, os, folderAutoUpdater, out verOnlineUpdater, out urlToDownloadUpdater);
             string fileAutoUpdaterExec = GetAutoUpdaterExec(folderAutoUpdater, os);
-
-            if (!string.IsNullOrWhiteSpace(fileAutoUpdaterExec))
+            if (string.IsNullOrWhiteSpace(fileAutoUpdaterExec))
+            {
+                needUpdate = true;
+            }
+            else
             {
                 FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(fileAutoUpdaterExec);
-                string verTemp = fvi.ProductVersion.ToString();
-                verCurrentUpdater = new(verTemp);
-                if (verCurrentUpdater is not null && verOnlineUpdater is not null)
+                if (Version.TryParse(fvi.ProductVersion, out Version verCurrentUpdater))
                 {
                     needUpdate = verOnlineUpdater > verCurrentUpdater;
                     if (needUpdate)
-                    {
                         Directory.Delete(folderAutoUpdater, true);
-                    }
+                }
+                else
+                {
+                    needUpdate = true;
+                    Directory.Delete(folderAutoUpdater, true);
                 }
             }
         }
-        if (!needUpdate || string.IsNullOrWhiteSpace(urlToDownloadUpdater))
-        {
-            if (!needUpdate)
-                return null;
-            error = "no url to download AutoUpdater";
-            return error;
-        }
+
+        if (!needUpdate)
+            return null;
+
+        if (string.IsNullOrWhiteSpace(artifact.Url))
+            return "no url to download AutoUpdater";
 
         Directory.CreateDirectory(folderAutoUpdater);
         string folderRepository = Path.Combine(folderAutoUpdater, "Repository");
         Directory.CreateDirectory(folderRepository);
         string fileNameDownloaded = Path.Combine(folderRepository, "autoupdater.zip");
-        using (var client = new HttpClientDownloadWithProgress(urlToDownloadUpdater, fileNameDownloaded))
-        {
 
+        using (var client = new HttpClientDownloadWithProgress(artifact.Url, fileNameDownloaded))
+        {
             client.ProgressChanged += (totalFileSize, totalBytesDownloaded, progressPercentage) =>
             {
-                if (downloadNotifier is not null)
-                    downloadNotifier.Invoke(progressPercentage is not null ? (int)progressPercentage : 0);
+                downloadNotifier?.Invoke(progressPercentage is not null ? (int)progressPercentage : 0);
             };
             client.StartDownload();
         }
-        //Atualiza os arquivos
-        error = Services.ReplaceFiles(folderAutoUpdater, folderRepository, os);
 
-        return error;
+        string verifyError = Verifier.Verify(fileNameDownloaded, artifact.Sha256, artifact.Signature);
+        if (!string.IsNullOrWhiteSpace(verifyError))
+        {
+            UpdaterLog.Error("AutoUpdater package verification failed: " + verifyError);
+            try { File.Delete(fileNameDownloaded); } catch { }
+            return "AutoUpdater package verification failed: " + verifyError;
+        }
+
+        UpdaterLog.Info("AutoUpdater package verification passed");
+
+        // Updating the AutoUpdater itself — nothing inside folderAutoUpdater needs preserving.
+        string installError = Services.ReplaceFiles(folderAutoUpdater, folderRepository, os, folderToPreserve: null);
+        if (!string.IsNullOrWhiteSpace(installError))
+            UpdaterLog.Error("AutoUpdater install failed: " + installError);
+        else
+            UpdaterLog.Info($"AutoUpdater updated to {verOnlineUpdater}");
+
+        return installError;
     }
+
     /// <summary>
-    /// 
+    /// Launches the external AutoUpdater process to update the calling program.
+    /// The current process should exit immediately after this call so the updater
+    /// can replace its files.
     /// </summary>
-    /// <param name="verOnline"></param>
-    /// <param name="urlToUpdate"></param>
-    /// <param name="emailToReportIssue"></param>
-    /// <param name="downloadNotifier"></param>
-    /// <returns>error message</returns>
-    public static string Update(Version verOnline, string urlToUpdate, string emailToReportIssue, Action<int> downloadNotifier)
+    /// <param name="verOnline">Version reported by the manifest.</param>
+    /// <param name="manifestUrl">URL of the JSON version manifest.</param>
+    /// <param name="emailToReportIssue">Optional email used to report errors.</param>
+    public static string Update(Version verOnline, string manifestUrl, string emailToReportIssue)
     {
-        //windows, linux, macos
+        if (string.IsNullOrWhiteSpace(manifestUrl))
+            return "manifestUrl is required";
+
         int os = Services.CheckOS();
+        if (os < 0)
+            return "Unsupported operating system";
 
         var program = Assembly.GetEntryAssembly();
         var folderProgram = Path.GetDirectoryName(program.Location);
         var folderAutoUpdater = Path.Combine(folderProgram, folderAutoUpdaterSufix);
 
         string fileAutoUpdaterExec = GetAutoUpdaterExec(folderAutoUpdater, os);
+        if (string.IsNullOrWhiteSpace(fileAutoUpdaterExec))
+            return "AutoUpdater executable not found at: " + folderAutoUpdater;
 
-        //executar o processo do instalador
-        ProcessStartInfo processInfo = new ProcessStartInfo();
-        processInfo.FileName = fileAutoUpdaterExec;
-        processInfo.UseShellExecute = true;
-        processInfo.CreateNoWindow = false;
-        bool isQuiet = false;
-        if (isQuiet)
+        ProcessStartInfo processInfo = new ProcessStartInfo
         {
-            processInfo.CreateNoWindow = true;
-            //arg += " -quietUX";
-        }
-        // versionOld, versionNew, urlToDownload, folderToInstall, emailToReportIssue, nameProgram
-        processInfo.Arguments = string.Format("\"{0}\" \"{1}\" \"{2}\" \"{3}\" \"{4}\" \"{5}\"", verOnline.ToString(), program.GetName().Version.ToString(), urlToUpdate, folderProgram, emailToReportIssue, program.GetName().Name);
+            FileName = fileAutoUpdaterExec,
+            UseShellExecute = true,
+            CreateNoWindow = false
+        };
 
-        Process.Start(processInfo);
+        // versionOld, versionNew, manifestUrl, folderToInstall, emailToReportIssue, nameProgram, callerPid
+        processInfo.Arguments = string.Format(
+            CultureInfo.InvariantCulture,
+            "\"{0}\" \"{1}\" \"{2}\" \"{3}\" \"{4}\" \"{5}\" \"{6}\"",
+            program.GetName().Version.ToString(),
+            verOnline.ToString(),
+            manifestUrl,
+            folderProgram,
+            emailToReportIssue ?? string.Empty,
+            program.GetName().Name,
+            Process.GetCurrentProcess().Id);
+
+        try
+        {
+            Process.Start(processInfo);
+            UpdaterLog.Info($"Update: launched AutoUpdaterConsole for {program.GetName().Name} {program.GetName().Version} -> {verOnline}");
+        }
+        catch (Exception ex)
+        {
+            UpdaterLog.Error("Failed to start AutoUpdater process", ex);
+            return "Failed to start AutoUpdater process: " + ex.Message;
+        }
         return null;
     }
+
     private static string GetAutoUpdaterExec(string folderAutoUpdater, int os)
     {
-        string fileAutoUpdaterExec = null;
         for (int i = 0; i < autoUpdateExec.Length; i++)
         {
-            fileAutoUpdaterExec = os == 0 ? Path.Combine(folderAutoUpdater, autoUpdateExec[i] + ".exe") : Path.Combine(folderAutoUpdater, autoUpdateExec[i]);
+            string fileAutoUpdaterExec = os == 0
+                ? Path.Combine(folderAutoUpdater, autoUpdateExec[i] + ".exe")
+                : Path.Combine(folderAutoUpdater, autoUpdateExec[i]);
             if (File.Exists(fileAutoUpdaterExec))
-            {
-                break;
-            }
-            fileAutoUpdaterExec = null;
+                return fileAutoUpdaterExec;
         }
-        return fileAutoUpdaterExec;
+        return null;
     }
-    private static void GetVersionOnline(string urlVersion, int os, string folderProgram, out Version verOnline, out string urlToDownload)
+
+    private static VersionManifest DownloadManifest(string manifestUrl, string folderProgram)
     {
-        string fileVersion = Path.Combine(folderProgram, "OnlineVersion");
-        if (File.Exists(fileVersion))
-            File.Delete(fileVersion);
+        string fileManifest = Path.Combine(folderProgram, "OnlineVersion.json");
+        if (File.Exists(fileManifest))
+            File.Delete(fileManifest);
 
-        using (var client = new HttpClientDownloadWithProgress(urlVersion, fileVersion))
+        using (var client = new HttpClientDownloadWithProgress(manifestUrl, fileManifest))
         {
-            client.StartDownload().Wait();
-        }
-        verOnline = null;
-        if (!File.Exists(fileVersion))
-        {
-            throw new Exception("No file version was downloaded");
+            client.StartDownload().GetAwaiter().GetResult();
         }
 
-        string textOnline;
-        using (StreamReader sr = new StreamReader(fileVersion))
-        {
-            textOnline = sr.ReadToEnd();
-        }
-        string[] lines = textOnline.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-        if (lines.Length < 2)
-        {
-            throw new Exception("The file version downloaded is wrong format");
-        }
-        int countLine = 0;
-        urlToDownload = null;
-        foreach (var item in lines)
-        {
-            if (item.Length == 0 || (item[0] == '/' && item.Length > 1 && item[1] == '/'))
-                continue;
-            switch (countLine)
-            {
-                case 0:
-                    verOnline = new(lines[countLine]);
-                    break;
-                default:
-                    if (countLine != os + 1)
-                    {
-                        break;
-                    }
+        if (!File.Exists(fileManifest))
+            throw new Exception("No manifest file was downloaded");
 
-                    if (HTTPMethods.IsValidURL(item))
-                    {
-                        urlToDownload = item;
-                    }
-                    else
-                    {
-                        throw new Exception("The url to download new version for " + (os == 0 ? "Windows" : os == 1 ? "Linux" : os == 2 ? "macOS" : "") + " is not in correct format");
-                    }
-                    break;
-            }
-            countLine++;
+        try
+        {
+            string json = File.ReadAllText(fileManifest);
+            VersionManifest manifest = VersionManifest.Parse(json);
+            if (manifest is null || string.IsNullOrWhiteSpace(manifest.Version) || manifest.Artifacts is null)
+                throw new Exception("Manifest is missing required fields ('version', 'artifacts')");
+            return manifest;
         }
-        if (File.Exists(fileVersion))
-            File.Delete(fileVersion);
+        finally
+        {
+            try { File.Delete(fileManifest); } catch { }
+        }
     }
 }
