@@ -78,20 +78,46 @@ public class ProcessArgTests
 public class OsKeyTests
 {
     [Theory]
-    [InlineData(0, "windows")]
-    [InlineData(1, "linux")]
-    [InlineData(2, "macos")]
-    public void FromIndex_maps_known_values(int index, string expected)
+    [InlineData("windows", "x64", "windows-x64")]
+    [InlineData("linux", "arm64", "linux-arm64")]
+    [InlineData("macos", "x64", "macos-x64")]
+    public void Build_joins_os_and_arch(string os, string arch, string expected)
     {
-        Assert.Equal(expected, OsKey.FromIndex(index));
+        Assert.Equal(expected, OsKey.Build(os, arch));
     }
 
     [Theory]
-    [InlineData(-1)]
-    [InlineData(3)]
-    [InlineData(99)]
-    public void FromIndex_throws_for_unknown_values(int index)
+    [InlineData("windows-x64")]
+    [InlineData("windows-x86")]
+    [InlineData("windows-arm64")]
+    [InlineData("linux-x64")]
+    [InlineData("linux-arm64")]
+    [InlineData("macos-x64")]
+    [InlineData("macos-arm64")]
+    public void IsValidKey_accepts_supported_os_arch(string key)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => OsKey.FromIndex(index));
+        Assert.True(OsKey.IsValidKey(key));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("windows")]
+    [InlineData("windows-")]
+    [InlineData("-x64")]
+    [InlineData("android-x64")]
+    [InlineData("windows-mips")]
+    [InlineData("windows_x64")]
+    public void IsValidKey_rejects_invalid_keys(string key)
+    {
+        Assert.False(OsKey.IsValidKey(key));
+    }
+
+    [Fact]
+    public void Current_has_valid_os_arch_format()
+    {
+        // No host de teste o SO/arquitetura são suportados, então a chave do
+        // runtime atual deve passar pela própria validação.
+        string key = OsKey.Current();
+        Assert.True(OsKey.IsValidKey(key), $"unexpected runtime key: '{key}'");
     }
 }

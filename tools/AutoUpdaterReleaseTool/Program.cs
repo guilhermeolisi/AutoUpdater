@@ -99,7 +99,7 @@ internal static class Program
             throw new FileNotFoundException($"Zip not found: {zipPath}");
 
         if (!IsValidOs(osKey))
-            throw new ArgumentException($"--os must be one of: windows, linux, macos. Got: {osKey}");
+            throw new ArgumentException($"--os must be '<os>-<arch>' (os: windows|linux|macos, arch: x86|x64|arm64|arm), e.g. windows-x64. Got: {osKey}");
 
         if (!Version.TryParse(version, out _))
             throw new ArgumentException($"--version is not a valid version: {version}");
@@ -159,7 +159,7 @@ internal static class Program
         if (!File.Exists(manifestPath))
             throw new FileNotFoundException($"Manifest not found: {manifestPath}");
         if (!IsValidOs(osKey))
-            throw new ArgumentException($"--os must be one of: windows, linux, macos. Got: {osKey}");
+            throw new ArgumentException($"--os must be '<os>-<arch>' (os: windows|linux|macos, arch: x86|x64|arm64|arm), e.g. windows-x64. Got: {osKey}");
 
         VersionManifest manifest = VersionManifest.Parse(File.ReadAllText(manifestPath));
         if (manifest?.Artifacts is null || !manifest.Artifacts.TryGetValue(osKey, out ArtifactInfo info))
@@ -261,8 +261,7 @@ internal static class Program
         return Vault.Load();
     }
 
-    private static bool IsValidOs(string osKey) =>
-        osKey is OsKey.Windows or OsKey.Linux or OsKey.MacOS;
+    private static bool IsValidOs(string osKey) => OsKey.IsValidKey(osKey);
 
     private static VersionManifest LoadOrCreateManifest(string path)
     {
@@ -320,14 +319,16 @@ COMMANDS:
       under %APPDATA%\AutoUpdater\private.bin, and print the public key as a
       C# constant to paste into src/AutoUpdateModel/PublicKey.cs.
 
-  sign --zip <path> --version <ver> --os <windows|linux|macos>
+  sign --zip <path> --version <ver> --os <os-arch>
        --url <download-url> [--manifest <path>] [--min-version <ver>]
       Compute SHA-256 of the zip, sign with Ed25519, and add/update the entry
-      for the given OS in the JSON manifest (default: version.json).
+      for the given OS/arch in the JSON manifest (default: version.json).
+      --os is a composite key '<os>-<arch>' where os is windows|linux|macos
+      and arch is x86|x64|arm64|arm (e.g. windows-x64, windows-arm64).
       --min-version sets the manifest's minimumVersion field (clients running
       below this version will be flagged as needing a mandatory update).
 
-  verify --zip <path> --os <windows|linux|macos>
+  verify --zip <path> --os <os-arch>
          [--manifest <path>] [--public-key <base64>]
       Sanity-check that the zip matches the manifest entry. Without --public-key,
       uses the embedded PublicKey.cs constant from AutoUpdaterModel.

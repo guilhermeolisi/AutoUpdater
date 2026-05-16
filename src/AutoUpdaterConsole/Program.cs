@@ -55,7 +55,7 @@ Directory.CreateDirectory(folderRepository);
 ArtifactInfo artifact;
 try
 {
-    artifact = DownloadAndParseManifest(manifestUrl, folderRepository, os);
+    artifact = DownloadAndParseManifest(manifestUrl, folderRepository);
 }
 catch (Exception ex)
 {
@@ -66,7 +66,7 @@ catch (Exception ex)
 
 if (string.IsNullOrWhiteSpace(artifact.Url))
 {
-    ProcessError($"Manifest has no download URL for OS '{OsKey.FromIndex(os)}'");
+    ProcessError($"Manifest has no download URL for '{OsKey.Current()}'");
     return;
 }
 
@@ -167,7 +167,7 @@ void RelaunchHostApp(string folder, string name, int currentOs)
     }
 }
 
-ArtifactInfo DownloadAndParseManifest(string url, string repository, int currentOs)
+ArtifactInfo DownloadAndParseManifest(string url, string repository)
 {
     string manifestFile = Path.Combine(repository, "version.json");
     if (File.Exists(manifestFile))
@@ -188,9 +188,9 @@ ArtifactInfo DownloadAndParseManifest(string url, string repository, int current
     if (manifest is null || manifest.Artifacts is null)
         throw new Exception("Manifest is invalid (missing 'artifacts')");
 
-    string osKey = OsKey.FromIndex(currentOs);
+    string osKey = OsKey.Current();
     if (!manifest.Artifacts.TryGetValue(osKey, out ArtifactInfo info))
-        throw new Exception($"Manifest has no entry for OS '{osKey}'");
+        throw new Exception($"Manifest has no entry for '{osKey}'");
 
     return info;
 }

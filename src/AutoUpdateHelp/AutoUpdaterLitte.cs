@@ -159,8 +159,9 @@ public static class AutoUpdater
         if (!Version.TryParse(manifest.Version, out Version verOnlineUpdater))
             return $"AutoUpdater manifest version is not in a valid format: '{manifest.Version}'";
 
-        if (!manifest.Artifacts.TryGetValue(OsKey.FromIndex(os), out ArtifactInfo artifact))
-            return $"AutoUpdater manifest has no artifact for OS '{OsKey.FromIndex(os)}'";
+        string osKey = OsKey.Current();
+        if (!manifest.Artifacts.TryGetValue(osKey, out ArtifactInfo artifact))
+            return $"AutoUpdater manifest has no artifact for '{osKey}'";
 
         bool needUpdate;
         if (!Directory.Exists(folderAutoUpdater))
