@@ -1,10 +1,8 @@
 // AutoUpdaterConsole
 
 using AutoUpdaterModel;
-using BaseLibrary;
 using System.Diagnostics;
 using System.Globalization;
-using System.Reflection;
 
 CultureInfo culture = CultureInfo.InvariantCulture;
 Thread.CurrentThread.CurrentCulture = culture;
@@ -48,8 +46,10 @@ Console.WriteLine($"Updating {nameProgram} from {versionOld} to {versionNew}");
 
 WaitForCallerExit(callerPid);
 
-string folderRepository = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-folderRepository = Path.Combine(folderRepository, "Repository");
+// AppContext.BaseDirectory funciona sob Native AOT/single-file
+// (Assembly.Location retorna vazio nesses modos).
+string folderUpdaterSelf = AppContext.BaseDirectory;
+string folderRepository = Path.Combine(folderUpdaterSelf, "Repository");
 Directory.CreateDirectory(folderRepository);
 
 ArtifactInfo artifact;
@@ -90,7 +90,6 @@ if (!string.IsNullOrWhiteSpace(verifyError))
 Console.WriteLine("ok");
 UpdaterLog.Info("Package verification passed");
 
-string folderUpdaterSelf = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 error = Services.ReplaceFiles(folderToInstall, folderRepository, os, folderUpdaterSelf);
 if (!string.IsNullOrWhiteSpace(error))
 {
@@ -173,7 +172,7 @@ ArtifactInfo DownloadAndParseManifest(string url, string repository)
     if (File.Exists(manifestFile))
         File.Delete(manifestFile);
 
-    using (var client = new HttpClientDownloadWithProgress(url, manifestFile))
+    using (var client = new FileDownloader(url, manifestFile))
     {
         client.StartDownload().GetAwaiter().GetResult();
     }
@@ -200,7 +199,7 @@ void DownloadNewVersion(string downloadFileUrl, string destination)
     Console.WriteLine("Downloading files...");
     isFirst = true;
 
-    using var client = new HttpClientDownloadWithProgress(downloadFileUrl, destination);
+    using var client = new FileDownloader(downloadFileUrl, destination);
     client.ProgressChanged += (totalFileSize, totalBytesDownloaded, progressPercentage) =>
     {
         if (isFirst)
@@ -208,18 +207,20 @@ void DownloadNewVersion(string downloadFileUrl, string destination)
             isFirst = false;
             double sizeMb = (totalFileSize ?? 0) / (1024d * 1024d);
             Console.WriteLine($"Total size: {sizeMb:F2} MB");
-            ConsoleUtility.WriteProgressBar(0);
+            ConsoleProgress.WriteProgressBar(0);
         }
         downloadProgressChanged(progressPercentage is not null ? (int)progressPercentage : 0);
     };
-    client.StartDownload();
+    // Aguarda a conclusão: a verificação de assinatura roda logo em seguida e
+    // não pode ver um arquivo parcial.
+    client.StartDownload().GetAwaiter().GetResult();
     downloadFileCompleted();
 }
 
 void downloadFileCompleted() => Console.WriteLine(" Done");
 
 void downloadProgressChanged(int progressPercentage)
-    => ConsoleUtility.WriteProgressBar(progressPercentage, true);
+    => ConsoleProgress.WriteProgressBar(progressPercentage, true);
 
 void ProcessError(string message)
 {
@@ -232,7 +233,10 @@ void ProcessError(string message)
     if (!string.IsNullOrEmpty(UpdaterLog.LogPath))
         Console.WriteLine($"Full log: {UpdaterLog.LogPath}");
 
+    // O envio de e-mail (BaseLibrary.Exception) foi removido: era incompatível
+    // com Native AOT (reflexão/Assembly.Load) e já estava desativado no fluxo
+    // Sindarin (ReportEmail vazio). Erros ficam registrados em UpdaterLog.
     if (!string.IsNullOrWhiteSpace(emailToReportIssue))
-        ExceptionMethods.SendException(emailToReportIssue, new Exception(message), false, null);
+        UpdaterLog.Info($"Issue-report email '{emailToReportIssue}' is configured, but email reporting is disabled in this build. See the log file.");
 }
 #endregion

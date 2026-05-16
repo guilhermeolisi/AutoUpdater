@@ -8,12 +8,13 @@
     <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
     <!-- Application code with flow-sensitive null guards the compiler can't fully track -->
     <NoWarn>CS8600;CS8601;CS8602;CS8603;CS8604;CS8625</NoWarn>
+    <!-- Publicado com Native AOT (perfis win-x64/arm64) ou trimming (demais).
+         Sem dependências de BaseLibrary: o updater é autossuficiente e AOT-safe. -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\BaseLibrary\src\BaseLibrary.Console\BaseLibrary.Console.csproj" />
-    <ProjectReference Include="..\..\..\BaseLibrary\src\BaseLibrary.Exception\BaseLibrary.Exception.csproj" />
-    <ProjectReference Include="..\..\..\BaseLibrary\src\BaseLibrary.HTTP\BaseLibrary.HTTP.csproj" />
     <ProjectReference Include="..\AutoUpdateModel\AutoUpdaterModel.csproj" />
   </ItemGroup>
 

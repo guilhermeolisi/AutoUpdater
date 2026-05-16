@@ -1,4 +1,4 @@
-using BaseLibrary;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 
@@ -100,7 +100,7 @@ public static class Services
             if (Directory.Exists(folder))
                 CleanLeftoverBackups(folder);
             else
-                FileMethods.CreatAllPath(folder);
+                Directory.CreateDirectory(folder);
 
             Console.Write("Unzipping the newest program files... ");
             Directory.CreateDirectory(staging);
@@ -336,11 +336,32 @@ public static class Services
 
     private static string? Permission(string fileExecute)
     {
-        if (!ConsoleUtility.ExecCommandLine("chmod", " 700 " + fileExecute, null!, false, false, false, false))
+        if (!RunChmod700(fileExecute))
         {
             return "An error was returned while trying to grant execute permission. " +
                    "Try to do it manually before continuing the upgrade. Path file: " + fileExecute;
         }
         return null;
+    }
+
+    private static bool RunChmod700(string fileExecute)
+    {
+        try
+        {
+            using Process? process = Process.Start(new ProcessStartInfo
+            {
+                FileName = "chmod",
+                ArgumentList = { "700", fileExecute },
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+            if (process is null) return false;
+            process.WaitForExit();
+            return process.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

@@ -20,26 +20,23 @@ public sealed class VersionManifest
     public Dictionary<string, ArtifactInfo> Artifacts { get; set; } = new();
 
     public static VersionManifest Parse(string json)
-    {
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            ReadCommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true
-        };
-        return JsonSerializer.Deserialize<VersionManifest>(json, options) ?? new VersionManifest();
-    }
+        => JsonSerializer.Deserialize(json, ManifestJsonContext.Default.VersionManifest)
+           ?? new VersionManifest();
 
     public string Serialize()
-    {
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
-        };
-        return JsonSerializer.Serialize(this, options);
-    }
+        => JsonSerializer.Serialize(this, ManifestJsonContext.Default.VersionManifest);
 }
+
+// Source generator: serialização/desserialização sem reflexão, compatível com
+// trimming e Native AOT. As opções de leitura/escrita ficam no contexto.
+[JsonSourceGenerationOptions(
+    PropertyNameCaseInsensitive = true,
+    ReadCommentHandling = JsonCommentHandling.Skip,
+    AllowTrailingCommas = true,
+    WriteIndented = true,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault)]
+[JsonSerializable(typeof(VersionManifest))]
+internal partial class ManifestJsonContext : JsonSerializerContext;
 
 public sealed class ArtifactInfo
 {
