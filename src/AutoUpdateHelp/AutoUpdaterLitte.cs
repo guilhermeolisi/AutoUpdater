@@ -209,7 +209,10 @@ public static class AutoUpdater
             {
                 downloadNotifier?.Invoke(progressPercentage is not null ? (int)progressPercentage : 0);
             };
-            client.StartDownload();
+            // Aguarda a conclusão: sem o GetResult o using descartava o
+            // HttpClient antes do download terminar, e o autoupdater.zip nunca
+            // era gravado (verificação falhava com "Package file not found").
+            client.StartDownload().GetAwaiter().GetResult();
         }
 
         string verifyError = Verifier.Verify(fileNameDownloaded, artifact.Sha256, artifact.Signature);
