@@ -7,7 +7,7 @@ namespace AutoUpdaterModel;
 /// </summary>
 public static class PublicKey
 {
-    public const string Ed25519PublicKeyBase64 = "REPLACE_WITH_PUBLIC_KEY_FROM_RELEASE_TOOL";
+    public const string Ed25519PublicKeyBase64 = "A4aWWXle/lnpLGW2uKu4uoso4UQD05L0/iAXuUXxJ8o=";
 
     public static bool IsConfigured =>
         !string.IsNullOrWhiteSpace(Ed25519PublicKeyBase64) &&

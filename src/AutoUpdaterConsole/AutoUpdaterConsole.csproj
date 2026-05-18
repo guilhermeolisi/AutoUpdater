@@ -13,7 +13,9 @@
     <IsAotCompatible>true</IsAotCompatible>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
-
+	<PropertyGroup>
+		<AssemblyVersion>1.1.0.0</AssemblyVersion>
+	</PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\AutoUpdateModel\AutoUpdaterModel.csproj" />
   </ItemGroup>
