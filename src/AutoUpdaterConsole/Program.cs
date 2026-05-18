@@ -1,6 +1,7 @@
 // AutoUpdaterConsole
 
 using AutoUpdaterModel;
+using BaseLibrary;
 using System.Diagnostics;
 using System.Globalization;
 
@@ -9,6 +10,10 @@ Thread.CurrentThread.CurrentCulture = culture;
 Thread.CurrentThread.CurrentUICulture = culture;
 CultureInfo.DefaultThreadCurrentCulture = culture;
 CultureInfo.DefaultThreadCurrentUICulture = culture;
+
+// Preferimos a classe instanciável (IConsoleServices) à API estática
+// ConsoleUtility: permite mock em testes de unidade.
+IConsoleServices console = new ConsoleServices();
 
 int os = Services.CheckOS();
 if (os < 0)
@@ -207,7 +212,7 @@ void DownloadNewVersion(string downloadFileUrl, string destination)
             isFirst = false;
             double sizeMb = (totalFileSize ?? 0) / (1024d * 1024d);
             Console.WriteLine($"Total size: {sizeMb:F2} MB");
-            ConsoleProgress.WriteProgressBar(0);
+            console.WriteProgressBar(0);
         }
         downloadProgressChanged(progressPercentage is not null ? (int)progressPercentage : 0);
     };
@@ -220,7 +225,7 @@ void DownloadNewVersion(string downloadFileUrl, string destination)
 void downloadFileCompleted() => Console.WriteLine(" Done");
 
 void downloadProgressChanged(int progressPercentage)
-    => ConsoleProgress.WriteProgressBar(progressPercentage, true);
+    => console.WriteProgressBar(progressPercentage, update: true);
 
 void ProcessError(string message)
 {

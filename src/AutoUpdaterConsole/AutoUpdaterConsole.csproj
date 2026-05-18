@@ -9,7 +9,8 @@
     <!-- Application code with flow-sensitive null guards the compiler can't fully track -->
     <NoWarn>CS8600;CS8601;CS8602;CS8603;CS8604;CS8625</NoWarn>
     <!-- Publicado com Native AOT (perfis win-x64/arm64) ou trimming (demais).
-         Sem dependências de BaseLibrary: o updater é autossuficiente e AOT-safe. -->
+         Usa BaseLibrary.Console (já compatibilizado com Native AOT) para a
+         barra de progresso, evitando código duplicado no updater. -->
     <IsAotCompatible>true</IsAotCompatible>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
@@ -18,6 +19,7 @@
 	</PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\AutoUpdateModel\AutoUpdaterModel.csproj" />
+    <ProjectReference Include="..\..\..\BaseLibrary\src\BaseLibrary.Console\BaseLibrary.Console.csproj" />
   </ItemGroup>
 
 </Project>

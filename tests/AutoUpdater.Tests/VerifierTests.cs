@@ -117,12 +117,25 @@ public class VerifierTests : IDisposable
     }
 
     [Fact]
-    public void Public_method_fails_when_key_not_configured()
+    public void Embedded_public_key_is_configured()
     {
-        // The default PublicKey constant is the placeholder, so the public Verify
-        // must return the configuration error before touching crypto.
+        // Guarda contra a regressão do sentinela em PublicKey.cs: o
+        // comparador de IsConfigured deve ser o placeholder, não a própria
+        // chave. Se quebrar, todo update passa a ser recusado.
+        Assert.True(AutoUpdaterModel.PublicKey.IsConfigured);
+        Assert.Equal(32, AutoUpdaterModel.PublicKey.Bytes.Length);
+    }
+
+    [Fact]
+    public void Public_method_reaches_crypto_when_key_configured()
+    {
+        // Com a chave embarcada configurada, Verify não pode mais abortar com
+        // "not configured": a assinatura aqui é de outra chave, então deve
+        // falhar na verificação Ed25519, provando que o caminho cripto rodou.
         string err = Verifier.Verify(_tempFile, _sha256, _signatureBase64);
-        Assert.Contains("not configured", err);
+        Assert.NotNull(err);
+        Assert.DoesNotContain("not configured", err);
+        Assert.Contains("Ed25519", err);
     }
 
     [Fact]
