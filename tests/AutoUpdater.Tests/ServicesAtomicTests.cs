@@ -160,6 +160,59 @@ public class ServicesAtomicTests : IDisposable
     }
 }
 
+/// <summary>
+/// Regressão: em produção o updater roda de dentro de
+/// <c>&lt;install&gt;\AutoUpdater\</c> e passa <c>AppContext.BaseDirectory</c>
+/// como folderToPreserve — que termina com separador. O repositório (e o
+/// staging) ficam em <c>&lt;install&gt;\AutoUpdater\Repository\</c>. Antes da
+/// correção a comparação não normalizava o separador final, a pasta
+/// AutoUpdater ia para *.update.bak levando o staging junto, e o install
+/// falhava com "Could not find a part of the path ...staging".
+/// </summary>
+public class ServicesPreserveTrailingSeparatorTests
+{
+    [Fact]
+    public void Install_succeeds_when_preserve_has_trailing_separator_and_hosts_repository()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "au-preserve-" + Guid.NewGuid().ToString("N"));
+        string install = Path.Combine(root, "Sindarin-windows-x64");
+        string preserve = Path.Combine(install, "AutoUpdater");
+        string repository = Path.Combine(preserve, "Repository");
+        string zipSrc = Path.Combine(root, "zipsrc");
+        Directory.CreateDirectory(install);
+        Directory.CreateDirectory(repository);
+        Directory.CreateDirectory(zipSrc);
+
+        try
+        {
+            // App antigo (0.1.90) + a própria pasta do updater (preservada).
+            File.WriteAllText(Path.Combine(install, "Sindarin.exe"), "OLD 0.1.90");
+            File.WriteAllText(Path.Combine(preserve, "AutoUpdaterConsole.exe"), "UPDATER");
+
+            // Novo pacote (0.1.91).
+            File.WriteAllText(Path.Combine(zipSrc, "Sindarin.exe"), "NEW 0.1.91");
+            string zipPath = Path.Combine(repository, "Sindarin.zip");
+            ZipFile.CreateFromDirectory(zipSrc, zipPath);
+
+            // folderToPreserve COM separador final, como AppContext.BaseDirectory.
+            string preserveWithSep = preserve + Path.DirectorySeparatorChar;
+
+            string err = Services.ReplaceFiles(install, repository, 0, preserveWithSep);
+
+            Assert.Null(err);
+            Assert.Equal("NEW 0.1.91", File.ReadAllText(Path.Combine(install, "Sindarin.exe")));
+            // A pasta do próprio updater permanece intacta no lugar (não foi para .bak).
+            Assert.True(File.Exists(Path.Combine(preserve, "AutoUpdaterConsole.exe")));
+            Assert.False(Directory.Exists(preserve + ".update.bak"));
+            Assert.Empty(Directory.GetFileSystemEntries(install, "*.update.bak", SearchOption.AllDirectories));
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch { }
+        }
+    }
+}
+
 public class ZipSlipTests
 {
     [Fact]

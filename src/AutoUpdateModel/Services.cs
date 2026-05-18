@@ -191,12 +191,17 @@ public static class Services
             backupFiles.Add((file, backup));
         }
 
-        string? preserveFull = string.IsNullOrWhiteSpace(folderToPreserve) ? null : Path.GetFullPath(folderToPreserve);
-        string repoFull = Path.GetFullPath(folderRepository);
+        // NormalizeDir remove o separador final: AppContext.BaseDirectory (origem
+        // de folderToPreserve) termina com '\', mas Directory.GetDirectories não.
+        // Sem isso a pasta do próprio updater (folderToPreserve) não era
+        // reconhecida, ia para *.update.bak junto com Repository\staging e o
+        // passo seguinte falhava ("Could not find a part of the path ...staging").
+        string? preserveFull = string.IsNullOrWhiteSpace(folderToPreserve) ? null : NormalizeDir(folderToPreserve);
+        string repoFull = NormalizeDir(folderRepository);
 
         foreach (var dir in Directory.GetDirectories(folder))
         {
-            string dirFull = Path.GetFullPath(dir);
+            string dirFull = NormalizeDir(dir);
             if (preserveFull is not null && string.Equals(dirFull, preserveFull, StringComparison.OrdinalIgnoreCase))
                 continue;
             if (string.Equals(dirFull, repoFull, StringComparison.OrdinalIgnoreCase))
@@ -276,6 +281,14 @@ public static class Services
                 TryDeleteDirectory(dir);
         }
     }
+
+    /// <summary>
+    /// Caminho absoluto sem separador final, para comparação estável entre
+    /// origens que incluem (AppContext.BaseDirectory) ou não (Directory.*)
+    /// a barra final.
+    /// </summary>
+    private static string NormalizeDir(string path)
+        => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
 
     private static void TryDeleteFile(string path)
     {
