@@ -256,19 +256,22 @@ public static class AutoUpdater
         var folderProgram = Path.GetDirectoryName(program.Location);
         var folderAutoUpdater = Path.Combine(folderProgram, folderAutoUpdaterSufix);
 
-        string fileAutoUpdaterExec = GetAutoUpdaterExec(folderAutoUpdater, os);
-        if (string.IsNullOrWhiteSpace(fileAutoUpdaterExec))
-            return "AutoUpdater executable not found at: " + folderAutoUpdater;
+        string autoUpdaterName = autoUpdateExec[0];
 
-        ProcessStartInfo processInfo = new ProcessStartInfo
+        // No macOS o apphost não roda (framework-dependent, sem assinatura):
+        // valida o .dll; nos demais SOs valida o apphost.
+        if (os == 2)
         {
-            FileName = fileAutoUpdaterExec,
-            UseShellExecute = true,
-            CreateNoWindow = false
-        };
+            if (!File.Exists(Services.AppDllPath(folderAutoUpdater, autoUpdaterName)))
+                return "AutoUpdater assembly not found at: " + folderAutoUpdater;
+        }
+        else if (string.IsNullOrWhiteSpace(GetAutoUpdaterExec(folderAutoUpdater, os)))
+        {
+            return "AutoUpdater executable not found at: " + folderAutoUpdater;
+        }
 
         // versionOld, versionNew, manifestUrl, folderToInstall, emailToReportIssue, nameProgram, callerPid
-        processInfo.Arguments = string.Format(
+        string baseArgs = string.Format(
             CultureInfo.InvariantCulture,
             "\"{0}\" \"{1}\" \"{2}\" \"{3}\" \"{4}\" \"{5}\" \"{6}\"",
             program.GetName().Version.ToString(),
@@ -278,6 +281,9 @@ public static class AutoUpdater
             emailToReportIssue ?? string.Empty,
             program.GetName().Name,
             Process.GetCurrentProcess().Id);
+
+        ProcessStartInfo processInfo = Services.BuildAppStartInfo(folderAutoUpdater, autoUpdaterName, os, baseArgs);
+        processInfo.CreateNoWindow = false;
 
         try
         {

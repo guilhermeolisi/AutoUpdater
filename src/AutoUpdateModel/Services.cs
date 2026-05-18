@@ -347,6 +347,47 @@ public static class Services
         return -1;
     }
 
+    /// <summary>
+    /// Caminho do assembly gerenciado (.dll) de um app .NET distribuído.
+    /// </summary>
+    public static string AppDllPath(string folder, string appName)
+        => Path.Combine(folder, appName + ".dll");
+
+    /// <summary>
+    /// Monta o <see cref="ProcessStartInfo"/> para iniciar um app .NET distribuído.
+    /// No macOS (os == 2) o apphost nativo não é executado diretamente: a
+    /// distribuição é framework-dependent e não assinada, então o Gatekeeper
+    /// bloquearia o binário. Nesse caso o app é iniciado via "dotnet &lt;dll&gt;".
+    /// Windows (0) usa o apphost ".exe" e Linux (1) o apphost sem extensão.
+    /// </summary>
+    public static ProcessStartInfo BuildAppStartInfo(string folder, string appName, int os, string? arguments)
+    {
+        string args = arguments ?? string.Empty;
+
+        if (os == 2)
+        {
+            string dll = AppDllPath(folder, appName);
+            string dllArg = "\"" + dll + "\"";
+            return new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                Arguments = string.IsNullOrEmpty(args) ? dllArg : dllArg + " " + args,
+                UseShellExecute = false,
+            };
+        }
+
+        string exe = os == 0
+            ? Path.Combine(folder, appName + ".exe")
+            : Path.Combine(folder, appName);
+
+        return new ProcessStartInfo
+        {
+            FileName = exe,
+            Arguments = args,
+            UseShellExecute = true,
+        };
+    }
+
     private static string? Permission(string fileExecute)
     {
         if (!RunChmod700(fileExecute))

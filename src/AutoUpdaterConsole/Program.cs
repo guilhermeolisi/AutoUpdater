@@ -141,28 +141,28 @@ void WaitForCallerExit(int pid)
 
 void RelaunchHostApp(string folder, string name, int currentOs)
 {
-    string exe = currentOs == 0
-        ? Path.Combine(folder, name + ".exe")
-        : Path.Combine(folder, name);
+    // No macOS o apphost não roda (framework-dependent, sem assinatura):
+    // o host é o .dll iniciado via "dotnet"; nos demais SOs é o apphost.
+    string target = currentOs == 2
+        ? Services.AppDllPath(folder, name)
+        : currentOs == 0
+            ? Path.Combine(folder, name + ".exe")
+            : Path.Combine(folder, name);
 
-    if (!File.Exists(exe))
+    if (!File.Exists(target))
     {
-        UpdaterLog.Warn($"Host app executable not found, skipping relaunch: {exe}");
-        Console.WriteLine($"Note: host app executable not found at {exe}. Please launch it manually.");
+        UpdaterLog.Warn($"Host app executable not found, skipping relaunch: {target}");
+        Console.WriteLine($"Note: host app executable not found at {target}. Please launch it manually.");
         return;
     }
 
     try
     {
-        var psi = new ProcessStartInfo
-        {
-            FileName = exe,
-            UseShellExecute = true,
-            WorkingDirectory = folder
-        };
+        ProcessStartInfo psi = Services.BuildAppStartInfo(folder, name, currentOs, null);
+        psi.WorkingDirectory = folder;
         Process.Start(psi);
-        UpdaterLog.Info($"Relaunched host app: {exe}");
-        Console.WriteLine($"Launched: {exe}");
+        UpdaterLog.Info($"Relaunched host app: {target}");
+        Console.WriteLine($"Launched: {target}");
     }
     catch (Exception ex)
     {
