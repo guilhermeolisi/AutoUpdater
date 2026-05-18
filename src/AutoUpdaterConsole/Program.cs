@@ -25,15 +25,17 @@ if (os < 0)
 Version versionOld, versionNew;
 string manifestUrl, folderToInstall, emailToReportIssue, nameProgram;
 int callerPid;
+bool relaunchCaller;
 bool isFirst = true;
 string error;
 
 error = Services.ProcessArg(args, out versionOld, out versionNew, out manifestUrl,
-                            out folderToInstall, out emailToReportIssue, out nameProgram, out callerPid);
+                            out folderToInstall, out emailToReportIssue, out nameProgram,
+                            out callerPid, out relaunchCaller);
 
 UpdaterLog.Init(nameProgram);
 UpdaterLog.Info($"AutoUpdaterConsole started. args: oldVer={versionOld} newVer={versionNew} " +
-                $"folder={folderToInstall} program={nameProgram} pid={callerPid}");
+                $"folder={folderToInstall} program={nameProgram} pid={callerPid} relaunch={relaunchCaller}");
 
 if (!string.IsNullOrWhiteSpace(error))
 {
@@ -105,8 +107,10 @@ if (!string.IsNullOrWhiteSpace(error))
 
 UpdaterLog.Info($"Update to {versionNew} completed successfully");
 
-if (callerPid > 0)
+if (callerPid > 0 && relaunchCaller)
     RelaunchHostApp(folderToInstall, nameProgram, os);
+else if (callerPid > 0)
+    UpdaterLog.Info("Relaunch suppressed by caller (relaunch=0).");
 
 
 #region Methods

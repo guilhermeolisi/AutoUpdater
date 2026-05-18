@@ -18,20 +18,24 @@ public static class Services
         out string? folderToInstall,
         out string? emailToReportIssue,
         out string? nameProgram,
-        out int callerPid)
+        out int callerPid,
+        out bool relaunchCaller)
     {
         versionOld = versionNew = null;
         manifestUrl = folderToInstall = emailToReportIssue = nameProgram = null;
         callerPid = 0;
+        // Compatível com chamadores antigos (7 args): relançar o host é o padrão.
+        relaunchCaller = true;
 
         if (args.Length == 0)
             return "no argument";
 
-        if (args.Length != ExpectedArgCount)
+        if (args.Length != ExpectedArgCount && args.Length != ExpectedArgCount + 1)
         {
             return $"It is necessary {ExpectedArgCount} arguments: " +
                    "old version; new version; manifest URL; folder to install; " +
-                   "email to report issue; program name; caller process id";
+                   "email to report issue; program name; caller process id" +
+                   $" (optional {ExpectedArgCount + 1}th: relaunch caller 0/1)";
         }
 
         if (!Version.TryParse(args[0], out versionOld))
@@ -47,6 +51,12 @@ public static class Services
 
         if (!int.TryParse(args[6], out callerPid) || callerPid < 0)
             return $"Caller process id is not a valid integer: '{args[6]}'";
+
+        if (args.Length == ExpectedArgCount + 1)
+        {
+            string flag = args[7]?.Trim() ?? string.Empty;
+            relaunchCaller = flag is "1" or "true" or "True";
+        }
 
         return null;
     }

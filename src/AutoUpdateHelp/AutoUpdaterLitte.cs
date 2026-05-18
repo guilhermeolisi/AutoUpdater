@@ -243,7 +243,12 @@ public static class AutoUpdater
     /// <param name="verOnline">Version reported by the manifest.</param>
     /// <param name="manifestUrl">URL of the JSON version manifest.</param>
     /// <param name="emailToReportIssue">Optional email used to report errors.</param>
-    public static string Update(Version verOnline, string manifestUrl, string emailToReportIssue)
+    /// <param name="relaunchCaller">
+    /// When true (default) the updater relaunches the calling program after
+    /// installing. CLI hosts (e.g. Sindarin) pass false: relaunching a
+    /// command-line tool with no arguments makes no sense.
+    /// </param>
+    public static string Update(Version verOnline, string manifestUrl, string emailToReportIssue, bool relaunchCaller = true)
     {
         if (string.IsNullOrWhiteSpace(manifestUrl))
             return "manifestUrl is required";
@@ -281,6 +286,11 @@ public static class AutoUpdater
             emailToReportIssue ?? string.Empty,
             program.GetName().Name,
             Process.GetCurrentProcess().Id);
+
+        // Só anexa o 8º argumento quando relançar está desativado, mantendo
+        // compatibilidade com chamadores/updaters antigos (que esperam 7 args).
+        if (!relaunchCaller)
+            baseArgs += " \"0\"";
 
         ProcessStartInfo processInfo = Services.BuildAppStartInfo(folderAutoUpdater, autoUpdaterName, os, baseArgs);
         processInfo.CreateNoWindow = false;
