@@ -39,7 +39,7 @@ public static class AutoUpdater
             };
         }
 
-        string folderProgram = Path.GetDirectoryName(program.Location);
+        string folderProgram = AppContext.BaseDirectory;
         if (!Directory.Exists(folderProgram))
             return new UpdateCheckResult
             {
@@ -143,7 +143,7 @@ public static class AutoUpdater
             return "The AutoUpdater manifest endpoint is not reachable. Check internet connection or firewall.";
         }
 
-        var folderProgram = Path.GetDirectoryName(program.Location);
+        var folderProgram = AppContext.BaseDirectory;
         var folderAutoUpdater = Path.Combine(folderProgram, folderAutoUpdaterSufix);
 
         VersionManifest manifest;
@@ -258,7 +258,7 @@ public static class AutoUpdater
             return "Unsupported operating system";
 
         var program = Assembly.GetEntryAssembly();
-        var folderProgram = Path.GetDirectoryName(program.Location);
+        var folderProgram = AppContext.BaseDirectory;
         var folderAutoUpdater = Path.Combine(folderProgram, folderAutoUpdaterSufix);
 
         string autoUpdaterName = autoUpdateExec[0];
