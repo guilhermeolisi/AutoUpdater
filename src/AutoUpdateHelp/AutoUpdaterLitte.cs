@@ -295,6 +295,10 @@ public static class AutoUpdater
         ProcessStartInfo processInfo = Services.BuildAppStartInfo(folderAutoUpdater, autoUpdaterName, os, baseArgs);
         processInfo.CreateNoWindow = false;
 
+        // Loga o comando exato: em caso de incompatibilidade host/updater, o
+        // updater rejeita os argumentos e este registro torna o diagnóstico óbvio.
+        UpdaterLog.Info($"Update: starting \"{processInfo.FileName}\" {processInfo.Arguments}");
+
         try
         {
             Process.Start(processInfo);
