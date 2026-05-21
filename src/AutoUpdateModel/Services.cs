@@ -62,6 +62,58 @@ public static class Services
     }
 
     /// <summary>
+    /// Tokeniza uma linha de comando no formato usado pelo host
+    /// (<c>"v0" "v1" ...</c>), de forma tolerante: uma aspa só fecha o token
+    /// quando seguida de espaço ou fim de linha. Isso recupera argumentos
+    /// emitidos por hosts legados que embrulhavam um caminho terminado em '\'
+    /// (ex.: <c>"C:\app\"</c>), caso em que o CommandLineToArgvW do Windows
+    /// trataria o <c>\"</c> como aspa escapada e corromperia a contagem.
+    /// </summary>
+    /// <param name="commandLine">Tipicamente <see cref="Environment.CommandLine"/>.</param>
+    /// <param name="skipExecutable">Descarta o primeiro token (o executável).</param>
+    public static string[] TokenizeArgsLenient(string? commandLine, bool skipExecutable = true)
+    {
+        if (string.IsNullOrEmpty(commandLine))
+            return Array.Empty<string>();
+
+        var tokens = new List<string>();
+        int i = 0;
+        int n = commandLine.Length;
+
+        while (i < n)
+        {
+            while (i < n && char.IsWhiteSpace(commandLine[i]))
+                i++;
+            if (i >= n)
+                break;
+
+            if (commandLine[i] == '"')
+            {
+                i++; // abre aspas
+                int start = i;
+                // Avança até uma aspa que feche o token (seguida de espaço/fim).
+                while (i < n && !(commandLine[i] == '"' && (i + 1 >= n || char.IsWhiteSpace(commandLine[i + 1]))))
+                    i++;
+                tokens.Add(commandLine.Substring(start, i - start));
+                if (i < n)
+                    i++; // consome a aspa de fechamento
+            }
+            else
+            {
+                int start = i;
+                while (i < n && !char.IsWhiteSpace(commandLine[i]))
+                    i++;
+                tokens.Add(commandLine.Substring(start, i - start));
+            }
+        }
+
+        if (skipExecutable && tokens.Count > 0)
+            tokens.RemoveAt(0);
+
+        return tokens.ToArray();
+    }
+
+    /// <summary>
     /// Replaces the contents of <paramref name="folderToInstall"/> with the contents of
     /// each zip in <paramref name="folderRepository"/>. The replacement is atomic with
     /// rollback on failure. The folder identified by <paramref name="folderToPreserve"/>

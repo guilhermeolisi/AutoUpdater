@@ -33,7 +33,27 @@ error = Services.ProcessArg(args, out versionOld, out versionNew, out manifestUr
                             out folderToInstall, out emailToReportIssue, out nameProgram,
                             out callerPid, out relaunchCaller);
 
+// Compatibilidade com hosts legados: versões antigas do Sindarin embrulhavam
+// o caminho de instalação terminado em '\', o que o CommandLineToArgvW do
+// Windows corrompe (\" vira aspa escapada). Se o parse padrão falhar, recupera
+// re-tokenizando a linha de comando crua de forma tolerante.
+bool recoveredFromLegacy = false;
+if (!string.IsNullOrWhiteSpace(error))
+{
+    string[] legacyArgs = Services.TokenizeArgsLenient(Environment.CommandLine);
+    string legacyError = Services.ProcessArg(legacyArgs, out versionOld, out versionNew, out manifestUrl,
+                                             out folderToInstall, out emailToReportIssue, out nameProgram,
+                                             out callerPid, out relaunchCaller);
+    if (string.IsNullOrWhiteSpace(legacyError))
+    {
+        recoveredFromLegacy = true;
+        error = null;
+    }
+}
+
 UpdaterLog.Init(nameProgram);
+if (recoveredFromLegacy)
+    UpdaterLog.Warn("Recovered arguments from a legacy/mangled command line (compatibility path).");
 UpdaterLog.Info($"AutoUpdaterConsole started. args: oldVer={versionOld} newVer={versionNew} " +
                 $"folder={folderToInstall} program={nameProgram} pid={callerPid} relaunch={relaunchCaller}");
 

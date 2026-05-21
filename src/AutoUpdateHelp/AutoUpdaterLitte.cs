@@ -275,6 +275,11 @@ public static class AutoUpdater
             return "AutoUpdater executable not found at: " + folderAutoUpdater;
         }
 
+        // Remove o separador final: AppContext.BaseDirectory termina com '\',
+        // e "...pasta\" faz o CommandLineToArgvW do Windows tratar o \" como
+        // aspa escapada, corrompendo a contagem de argumentos no updater.
+        string folderInstallArg = folderProgram.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
         // versionOld, versionNew, manifestUrl, folderToInstall, emailToReportIssue, nameProgram, callerPid
         string baseArgs = string.Format(
             CultureInfo.InvariantCulture,
@@ -282,7 +287,7 @@ public static class AutoUpdater
             program.GetName().Version.ToString(),
             verOnline.ToString(),
             manifestUrl,
-            folderProgram,
+            folderInstallArg,
             emailToReportIssue ?? string.Empty,
             program.GetName().Name,
             Process.GetCurrentProcess().Id);
