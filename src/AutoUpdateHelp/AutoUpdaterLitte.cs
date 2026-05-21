@@ -298,6 +298,11 @@ public static class AutoUpdater
             baseArgs += " \"0\"";
 
         ProcessStartInfo processInfo = Services.BuildAppStartInfo(folderAutoUpdater, autoUpdaterName, os, baseArgs);
+        // UseShellExecute=false faz o updater HERDAR o console do chamador, em vez
+        // de abrir uma nova janela que fecharia ao terminar. Assim o usuário vê
+        // as mensagens do update no mesmo terminal de onde rodou "--update".
+        // (No macOS o helper já usa false, pois inicia via "dotnet <dll>".)
+        processInfo.UseShellExecute = false;
         processInfo.CreateNoWindow = false;
 
         // Loga o comando exato: em caso de incompatibilidade host/updater, o
