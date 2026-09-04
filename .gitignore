@@ -367,3 +367,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Worktrees do Claude Code: checkouts descartaveis, nunca versionar
+.claude/worktrees/
+.claude/settings.local.json
