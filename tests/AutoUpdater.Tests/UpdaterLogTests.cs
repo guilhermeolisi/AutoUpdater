@@ -71,9 +71,24 @@ public class UpdaterLogTests
     [Fact]
     public void Init_with_null_or_empty_name_falls_back_to_default()
     {
-        // Should not throw and should still produce a usable log path.
+        // O nome promete null OU vazio, mas so o null era exercitado, e a unica
+        // asercao (NotNull) passava para qualquer implementacao. Os tres casos
+        // tem que cair no MESMO lugar, e num subdiretorio proprio: o log do
+        // AutoUpdater ja instalado vive nesse caminho, entao ele e contrato com
+        // o disco do usuario, nao preferencia.
         UpdaterLog.Init(null!);
-        Assert.NotNull(UpdaterLog.LogPath);
+        string? comNull = UpdaterLog.LogPath;
+
+        UpdaterLog.Init("");
+        string? comVazio = UpdaterLog.LogPath;
+
+        UpdaterLog.Init("   ");
+        string? comEspaco = UpdaterLog.LogPath;
+
+        Assert.NotNull(comNull);
+        Assert.Equal(comNull, comVazio);
+        Assert.Equal(comNull, comEspaco);
+        Assert.EndsWith(Path.Combine("AutoUpdater", "updater.log"), comNull!);
     }
 
     private static void CleanupTestLog(string testName)
