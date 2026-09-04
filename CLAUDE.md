@@ -1,58 +1,60 @@
-# AutoUpdater — Visão Geral da Solução
+# AutoUpdater: atualizacao automatica de aplicativos
 
-## O que é esta solução
+Solucao .NET 10 multiplataforma (Windows, Linux, macOS) para atualizacao automatica:
+verificar versao nova online, baixar e instalar os arquivos, de forma integrada e
+transparente para o usuario final. Deve continuar simples e pequena, compilavel em
+Native AOT quando possivel. Regras compartilhadas em `../CLAUDE.md`.
 
-AutoUpdater é uma solução .NET 10 multiplataforma (Windows, Linux, macOS) para atualização automática de aplicativos. Ela fornece toda a infraestrutura necessária para que um programa possa verificar se existe uma versão mais nova disponível online, fazer o download da nova versão e instalar os arquivos — tudo de forma integrada e transparente para o usuário final.
+Cinco projetos daqui entram no `Sindarin.sln`: mudanca de API afeta o Sindarin.
 
-Deve ser uma solução simples pequena que possa ser compilada em Native AOT quando possível.
+## Fluxo
 
-O fluxo geral é: o programa cliente usa **AutoUpdaterHelp** para verificar se há atualização disponível; se houver, **AutoUpdaterHelp** inicia o executável do **AutoUpdaterConsole** (ou GUI), que por sua vez faz o download do `.zip` com a nova versão e substitui os arquivos em disco, usando a lógica central do **AutoUpdaterModel**.
+O programa cliente usa **AutoUpdaterHelp** para verificar se ha atualizacao; se houver,
+**AutoUpdaterHelp** inicia o executavel do **AutoUpdaterConsole** (ou GUI), que baixa o
+`.zip` da nova versao e substitui os arquivos em disco usando o **AutoUpdaterModel**.
 
----
+```
+Programa do usuario
+    -> referencia AutoUpdaterHelp
+        -> referencia AutoUpdaterModel
+            -> BaseLibrary.*
+AutoUpdaterHelp (em runtime)
+    -> inicia processo: AutoUpdaterConsole.exe (ou GUI)
+        -> referencia AutoUpdaterModel
+```
 
-## Projetos da Solução
+## Projetos
 
-### AutoUpdaterModel (`src/AutoUpdateModel`)
-**Tipo:** Class Library (.NET 10)
+### AutoUpdaterModel (`src/AutoUpdateModel`), Class Library
+Logica central, referenciada pelos demais.
+- `Services.ProcessArg`: processa e valida os argumentos de linha de comando
+  (versao antiga, versao nova, URL de download, pasta de instalacao, e-mail para
+  reporte de erros, nome do programa).
+- `Services.ReplaceFiles`: apaga a versao antiga na pasta de destino, descompacta o
+  `.zip` e, fora do Windows, da permissao de execucao ao binario (`chmod 700`).
+- `Services.CheckOS`: Windows = 0, Linux = 1, macOS = 2.
+- Dependencias: `BaseLibrary.Console`, `BaseLibrary.File`.
 
-Contém a lógica principal e reutilizável da solução. É referenciado pelos demais projetos.
+### AutoUpdaterConsole (`src/AutoUpdaterConsole`), executavel
+CLI que executa a atualizacao; iniciado como processo filho pelo programa atualizado.
+- Recebe os 6 argumentos acima; verifica conectividade; baixa o `.zip` com barra de
+  progresso; chama `ReplaceFiles`; em erro, mensagem em vermelho e opcionalmente
+  e-mail via `ExceptionMethods.SendException`.
+- Dependencias: `AutoUpdaterModel`, `BaseLibrary.Console`, `BaseLibrary.HTTP`,
+  `BaseLibrary.Exception`.
 
-Principais responsabilidades:
-- `Services.ProcessArg` — processa e valida os argumentos de linha de comando recebidos pelo executável atualizador (versão antiga, versão nova, URL de download, pasta de instalação, e-mail para reporte de erros, nome do programa).
-- `Services.ReplaceFiles` — executa a substituição dos arquivos da aplicação: apaga os arquivos da versão antiga na pasta de destino, descompacta o `.zip` com a nova versão e, em sistemas não-Windows, concede permissão de execução ao binário (via `chmod 700`).
-- `Services.CheckOS` — detecta o sistema operacional em execução (Windows = 0, Linux = 1, macOS = 2) para que o comportamento seja ajustado conforme a plataforma.
+### AutoUpdaterHelp (`src/AutoUpdateHelp`), Class Library
+Biblioteca referenciada pelo programa que precisa ser atualizado.
+- `AutoUpdater.HasNewVersion(urlVersion, frequency)`: respeita frequencia minima de
+  verificacao; baixa o arquivo remoto de versao, compara com a versao do assembly e
+  retorna versao e URL se houver atualizacao.
+- `AutoUpdater.VerifyUpdateOfAutoUpdater(downloadNotifier)`: atualiza o proprio
+  AutoUpdater na subpasta `AutoUpdater/` do programa antes de usa-lo.
+- `AutoUpdater.Update(verOnline, urlToUpdate, emailToReportIssue, downloadNotifier)`:
+  localiza o executavel (Console ou GUI conforme o OS) e o lanca com os argumentos.
+- Dependencias: `AutoUpdaterModel`, `BaseLibrary.HTTP`.
 
-Dependências externas (BaseLibrary): `BaseLibrary.Console`, `BaseLibrary.File`.
-
----
-
-### AutoUpdaterConsole (`src/AutoUpdaterConsole`)
-**Tipo:** Aplicação Console (.NET 10, executável)
-
-É a implementação CLI (Command-Line Interface) do atualizador — o processo que efetivamente executa a atualização. É iniciado como um processo filho pelo programa que está sendo atualizado (via **AutoUpdaterHelp**).
-
-Principais responsabilidades:
-- Recebe 6 argumentos de linha de comando: versão antiga, versão nova, URL de download, pasta de instalação, e-mail para reporte e nome do programa.
-- Verifica conectividade com a internet antes de tentar o download.
-- Faz o download do arquivo `.zip` da nova versão a partir da URL fornecida, exibindo barra de progresso no terminal.
-- Chama `Services.ReplaceFiles` para substituir os arquivos instalados.
-- Em caso de erro, exibe a mensagem em vermelho no console e opcionalmente envia um e-mail de reporte via `ExceptionMethods.SendException`.
-
-Dependências: `AutoUpdaterModel`, `BaseLibrary.Console`, `BaseLibrary.HTTP`, `BaseLibrary.Exception`.
-
----
-
-### AutoUpdaterHelp (`src/AutoUpdateHelp`)
-**Tipo:** Class Library (.NET 10)
-
-É a biblioteca que deve ser referenciada e usada diretamente pelo programa que precisa ser atualizado. Atua como a "cola" entre o programa cliente e o mecanismo de atualização.
-
-Principais responsabilidades:
-- `AutoUpdater.HasNewVersion(urlVersion, frequency)` — verifica (respeitando uma frequência mínima de verificação configurável) se existe uma versão mais nova disponível online. Baixa um arquivo de texto remoto com a versão atual e a URL de download por plataforma, compara com a versão do assembly em execução e retorna a nova versão e URL caso exista atualização.
-- `AutoUpdater.VerifyUpdateOfAutoUpdater(downloadNotifier)` — verifica e instala/atualiza o próprio executável do AutoUpdater (AutoUpdaterConsole ou AutoUpdaterGUI) dentro da subpasta `AutoUpdater/` no diretório do programa. Garante que o atualizador em si esteja sempre na versão mais recente antes de usá-lo.
-- `AutoUpdater.Update(verOnline, urlToUpdate, emailToReportIssue, downloadNotifier)` — inicia o processo de atualização: localiza o executável do AutoUpdater (Console ou GUI, dependendo do OS) e o lança como um novo processo passando todos os argumentos necessários.
-
-O arquivo de versão remoto segue o formato:
+Arquivo de versao remoto:
 ```
 <numero_da_versao>
 <url_windows>
@@ -60,20 +62,8 @@ O arquivo de versão remoto segue o formato:
 <url_macos>
 ```
 
-Dependências: `AutoUpdaterModel`, `BaseLibrary.HTTP`.
+## Comandos
 
-
-## Arquitetura e Dependências
-
-```
-Programa do usuário
-    └── referencia AutoUpdaterHelp
-            └── referencia AutoUpdaterModel
-                    └── BaseLibrary.*
-
-AutoUpdaterHelp (em runtime)
-    └── inicia processo: AutoUpdaterConsole.exe (ou GUI)
-            └── referencia AutoUpdaterModel
-```
-
-A solução depende de uma biblioteca interna chamada **BaseLibrary**, localizada em `../BaseLibrary/src/`, que fornece utilitários para: console (`BaseLibrary.Console`), arquivos (`BaseLibrary.File`), HTTP/download (`BaseLibrary.HTTP`), exceções (`BaseLibrary.Exception`) e outros.
+- `dotnet build AutoUpdater.sln --no-restore`
+- `dotnet test AutoUpdater.sln --no-restore`
+- Compatibilidade AOT: skill `dotnet-aot-compat` do plugin `dotnet-upgrade`.
