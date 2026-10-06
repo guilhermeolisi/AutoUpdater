@@ -59,7 +59,7 @@ public class ServicesAtomicTests : IDisposable
         File.WriteAllText(Path.Combine(_zipSrc, "lib", "thing.dll"), "NEW lib");
         BuildZip();
 
-        string err = Services.ReplaceFiles(_install, _repository, 0, PreserveFolder);
+        string? err = Services.ReplaceFiles(_install, _repository, 0, PreserveFolder);
 
         Assert.Null(err);
         Assert.Equal("NEW app", File.ReadAllText(Path.Combine(_install, "app.exe")));
@@ -77,7 +77,7 @@ public class ServicesAtomicTests : IDisposable
         File.WriteAllText(Path.Combine(_zipSrc, "lib", "thing.dll"), "NEW lib");
         BuildZip();
 
-        string err;
+        string? err;
         // Hold an open handle to a file inside install/lib so Directory.Move
         // ("lib" -> "lib.update.bak") fails during the backup phase.
         using (var locker = new FileStream(
@@ -105,7 +105,7 @@ public class ServicesAtomicTests : IDisposable
         File.WriteAllText(Path.Combine(_zipSrc, "app.exe"), "NEW");
         BuildZip();
 
-        string err = Services.ReplaceFiles(_install, _repository, 0, PreserveFolder);
+        string? err = Services.ReplaceFiles(_install, _repository, 0, PreserveFolder);
 
         Assert.NotNull(err);
         Assert.Contains("reserved", err);
@@ -122,7 +122,7 @@ public class ServicesAtomicTests : IDisposable
         File.WriteAllText(Path.Combine(_zipSrc, "app.exe"), "NEW");
         BuildZip();
 
-        string err = Services.ReplaceFiles(_install, _repository, 0, PreserveFolder);
+        string? err = Services.ReplaceFiles(_install, _repository, 0, PreserveFolder);
 
         Assert.NotNull(err);
         Assert.Contains("reserved", err);
@@ -135,7 +135,7 @@ public class ServicesAtomicTests : IDisposable
         File.WriteAllText(Path.Combine(_zipSrc, "app.exe"), "NEW");
         BuildZip();
 
-        string err = Services.ReplaceFiles(_install, _repository, 0, PreserveFolder);
+        string? err = Services.ReplaceFiles(_install, _repository, 0, PreserveFolder);
 
         Assert.Null(err);
         Assert.False(File.Exists(Path.Combine(_install, "stale.update.bak")));
@@ -145,7 +145,7 @@ public class ServicesAtomicTests : IDisposable
     [Fact]
     public void Empty_repository_returns_friendly_error()
     {
-        string err = Services.ReplaceFiles(_install, _repository, 0, PreserveFolder);
+        string? err = Services.ReplaceFiles(_install, _repository, 0, PreserveFolder);
         Assert.NotNull(err);
         Assert.Contains("source file", err);
     }
@@ -154,7 +154,7 @@ public class ServicesAtomicTests : IDisposable
     public void Empty_zip_is_rejected()
     {
         BuildZip(); // empty zipSrc -> empty zip
-        string err = Services.ReplaceFiles(_install, _repository, 0, PreserveFolder);
+        string? err = Services.ReplaceFiles(_install, _repository, 0, PreserveFolder);
         Assert.NotNull(err);
         Assert.Contains("empty", err);
     }
@@ -197,7 +197,7 @@ public class ServicesPreserveTrailingSeparatorTests
             // folderToPreserve COM separador final, como AppContext.BaseDirectory.
             string preserveWithSep = preserve + Path.DirectorySeparatorChar;
 
-            string err = Services.ReplaceFiles(install, repository, 0, preserveWithSep);
+            string? err = Services.ReplaceFiles(install, repository, 0, preserveWithSep);
 
             Assert.Null(err);
             Assert.Equal("NEW 0.1.91", File.ReadAllText(Path.Combine(install, "Sindarin.exe")));
@@ -235,7 +235,7 @@ public class ZipSlipTests
                 ws.Write("pwned"u8.ToArray());
             }
 
-            string err = Services.ReplaceFiles(install, repo, 0, folderToPreserve: null);
+            string? err = Services.ReplaceFiles(install, repo, 0, folderToPreserve: null);
             Assert.NotNull(err);
             Assert.Contains("Zip Slip", err);
 

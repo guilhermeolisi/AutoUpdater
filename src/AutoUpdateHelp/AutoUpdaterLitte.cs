@@ -27,7 +27,7 @@ public static class AutoUpdater
 
         var program = Assembly.GetEntryAssembly();
         UpdaterLog.Init(program?.GetName().Name);
-        Version verCurrent = program?.GetName().Version;
+        Version? verCurrent = program?.GetName().Version;
 
         if (!Connectivity.IsEndpointReachable(manifestUrl))
         {
@@ -79,14 +79,14 @@ public static class AutoUpdater
             return new UpdateCheckResult { CurrentVersion = verCurrent, Message = ex.Message };
         }
 
-        if (!Version.TryParse(manifest.Version, out Version verOnline))
+        if (!Version.TryParse(manifest.Version, out Version? verOnline))
             return new UpdateCheckResult
             {
                 CurrentVersion = verCurrent,
                 Message = $"Manifest version is not in a valid format: '{manifest.Version}'"
             };
 
-        Version verMinimum = null;
+        Version? verMinimum = null;
         if (!string.IsNullOrWhiteSpace(manifest.MinimumVersion))
         {
             if (!Version.TryParse(manifest.MinimumVersion, out verMinimum))
@@ -125,7 +125,7 @@ public static class AutoUpdater
     /// <param name="manifestUrlAutoUpdater">URL of the AutoUpdater JSON manifest (e.g. Azure Blob Storage URL).</param>
     /// <param name="downloadNotifier">Optional callback receiving download progress percentage.</param>
     /// <returns>Error message, or null on success.</returns>
-    public static string VerifyUpdateOfAutoUpdater(string manifestUrlAutoUpdater, Action<int> downloadNotifier)
+    public static string? VerifyUpdateOfAutoUpdater(string manifestUrlAutoUpdater, Action<int>? downloadNotifier)
     {
         if (string.IsNullOrWhiteSpace(manifestUrlAutoUpdater))
             return "manifestUrlAutoUpdater is required";
@@ -156,11 +156,11 @@ public static class AutoUpdater
             return "Could not get AutoUpdater manifest online: " + ex.Message;
         }
 
-        if (!Version.TryParse(manifest.Version, out Version verOnlineUpdater))
+        if (!Version.TryParse(manifest.Version, out Version? verOnlineUpdater))
             return $"AutoUpdater manifest version is not in a valid format: '{manifest.Version}'";
 
         string osKey = OsKey.Current();
-        if (!manifest.Artifacts.TryGetValue(osKey, out ArtifactInfo artifact))
+        if (!manifest.Artifacts.TryGetValue(osKey, out ArtifactInfo? artifact))
             return $"AutoUpdater manifest has no artifact for '{osKey}'";
 
         bool needUpdate;
@@ -170,7 +170,7 @@ public static class AutoUpdater
         }
         else
         {
-            string fileAutoUpdaterExec = GetAutoUpdaterExec(folderAutoUpdater, os);
+            string? fileAutoUpdaterExec = GetAutoUpdaterExec(folderAutoUpdater, os);
             if (string.IsNullOrWhiteSpace(fileAutoUpdaterExec))
             {
                 needUpdate = true;
@@ -178,7 +178,7 @@ public static class AutoUpdater
             else
             {
                 FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(fileAutoUpdaterExec);
-                if (Version.TryParse(fvi.ProductVersion, out Version verCurrentUpdater))
+                if (Version.TryParse(fvi.ProductVersion, out Version? verCurrentUpdater))
                 {
                     needUpdate = verOnlineUpdater > verCurrentUpdater;
                     if (needUpdate)
@@ -215,7 +215,7 @@ public static class AutoUpdater
             client.StartDownload().GetAwaiter().GetResult();
         }
 
-        string verifyError = Verifier.Verify(fileNameDownloaded, artifact.Sha256, artifact.Signature);
+        string? verifyError = Verifier.Verify(fileNameDownloaded, artifact.Sha256, artifact.Signature);
         if (!string.IsNullOrWhiteSpace(verifyError))
         {
             UpdaterLog.Error("AutoUpdater package verification failed: " + verifyError);
@@ -226,7 +226,7 @@ public static class AutoUpdater
         UpdaterLog.Info("AutoUpdater package verification passed");
 
         // Updating the AutoUpdater itself — nothing inside folderAutoUpdater needs preserving.
-        string installError = Services.ReplaceFiles(folderAutoUpdater, folderRepository, os, folderToPreserve: null);
+        string? installError = Services.ReplaceFiles(folderAutoUpdater, folderRepository, os, folderToPreserve: null);
         if (!string.IsNullOrWhiteSpace(installError))
             UpdaterLog.Error("AutoUpdater install failed: " + installError);
         else
@@ -248,7 +248,7 @@ public static class AutoUpdater
     /// installing. CLI hosts (e.g. Sindarin) pass false: relaunching a
     /// command-line tool with no arguments makes no sense.
     /// </param>
-    public static string Update(Version verOnline, string manifestUrl, string emailToReportIssue, bool relaunchCaller = true)
+    public static string? Update(Version verOnline, string manifestUrl, string? emailToReportIssue, bool relaunchCaller = true)
     {
         if (string.IsNullOrWhiteSpace(manifestUrl))
             return "manifestUrl is required";
@@ -257,7 +257,9 @@ public static class AutoUpdater
         if (os < 0)
             return "Unsupported operating system";
 
-        var program = Assembly.GetEntryAssembly();
+        // Sem assembly de entrada (ou sem versao) os argumentos do updater nao existem: antes era NRE.
+        var program = Assembly.GetEntryAssembly() ?? throw new InvalidOperationException("Entry assembly not available.");
+        Version currentVersion = program.GetName().Version ?? throw new InvalidOperationException("Entry assembly has no version.");
         var folderProgram = AppContext.BaseDirectory;
         var folderAutoUpdater = Path.Combine(folderProgram, folderAutoUpdaterSufix);
 
@@ -284,7 +286,7 @@ public static class AutoUpdater
         string baseArgs = string.Format(
             CultureInfo.InvariantCulture,
             "\"{0}\" \"{1}\" \"{2}\" \"{3}\" \"{4}\" \"{5}\" \"{6}\"",
-            program.GetName().Version.ToString(),
+            currentVersion.ToString(),
             verOnline.ToString(),
             manifestUrl,
             folderInstallArg,
@@ -322,7 +324,7 @@ public static class AutoUpdater
         return null;
     }
 
-    private static string GetAutoUpdaterExec(string folderAutoUpdater, int os)
+    private static string? GetAutoUpdaterExec(string folderAutoUpdater, int os)
     {
         for (int i = 0; i < autoUpdateExec.Length; i++)
         {

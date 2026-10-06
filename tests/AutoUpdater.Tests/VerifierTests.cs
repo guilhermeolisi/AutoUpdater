@@ -38,7 +38,7 @@ public class VerifierTests : IDisposable
     [Fact]
     public void Valid_package_returns_null()
     {
-        string err = Verifier.VerifyWithKey(_tempFile, _sha256, _signatureBase64, _publicKey);
+        string? err = Verifier.VerifyWithKey(_tempFile, _sha256, _signatureBase64, _publicKey);
         Assert.Null(err);
     }
 
@@ -46,7 +46,7 @@ public class VerifierTests : IDisposable
     public void Modified_payload_fails_sha256()
     {
         File.AppendAllText(_tempFile, "tampered");
-        string err = Verifier.VerifyWithKey(_tempFile, _sha256, _signatureBase64, _publicKey);
+        string? err = Verifier.VerifyWithKey(_tempFile, _sha256, _signatureBase64, _publicKey);
         Assert.NotNull(err);
         Assert.Contains("SHA-256 mismatch", err);
     }
@@ -54,7 +54,7 @@ public class VerifierTests : IDisposable
     [Fact]
     public void Wrong_sha256_in_manifest_fails()
     {
-        string err = Verifier.VerifyWithKey(_tempFile, "00" + _sha256.Substring(2), _signatureBase64, _publicKey);
+        string? err = Verifier.VerifyWithKey(_tempFile, "00" + _sha256.Substring(2), _signatureBase64, _publicKey);
         Assert.NotNull(err);
         Assert.Contains("SHA-256 mismatch", err);
     }
@@ -69,7 +69,7 @@ public class VerifierTests : IDisposable
         });
         byte[] otherPublic = otherKey.PublicKey.Export(KeyBlobFormat.RawPublicKey);
 
-        string err = Verifier.VerifyWithKey(_tempFile, _sha256, _signatureBase64, otherPublic);
+        string? err = Verifier.VerifyWithKey(_tempFile, _sha256, _signatureBase64, otherPublic);
         Assert.NotNull(err);
         Assert.Contains("signature verification failed", err);
     }
@@ -81,7 +81,7 @@ public class VerifierTests : IDisposable
         sig[0] ^= 0xFF;
         string tampered = Convert.ToBase64String(sig);
 
-        string err = Verifier.VerifyWithKey(_tempFile, _sha256, tampered, _publicKey);
+        string? err = Verifier.VerifyWithKey(_tempFile, _sha256, tampered, _publicKey);
         Assert.NotNull(err);
         Assert.Contains("signature verification failed", err);
     }
@@ -89,7 +89,7 @@ public class VerifierTests : IDisposable
     [Fact]
     public void Missing_file_returns_friendly_error()
     {
-        string err = Verifier.VerifyWithKey(_tempFile + ".does-not-exist", _sha256, _signatureBase64, _publicKey);
+        string? err = Verifier.VerifyWithKey(_tempFile + ".does-not-exist", _sha256, _signatureBase64, _publicKey);
         Assert.NotNull(err);
         Assert.Contains("not found", err);
     }
@@ -97,21 +97,21 @@ public class VerifierTests : IDisposable
     [Fact]
     public void Empty_sha256_is_rejected()
     {
-        string err = Verifier.VerifyWithKey(_tempFile, "", _signatureBase64, _publicKey);
+        string? err = Verifier.VerifyWithKey(_tempFile, "", _signatureBase64, _publicKey);
         Assert.Contains("SHA-256 is missing", err);
     }
 
     [Fact]
     public void Empty_signature_is_rejected()
     {
-        string err = Verifier.VerifyWithKey(_tempFile, _sha256, "", _publicKey);
+        string? err = Verifier.VerifyWithKey(_tempFile, _sha256, "", _publicKey);
         Assert.Contains("Signature is missing", err);
     }
 
     [Fact]
     public void Invalid_base64_signature_returns_friendly_error()
     {
-        string err = Verifier.VerifyWithKey(_tempFile, _sha256, "!!!not-base64!!!", _publicKey);
+        string? err = Verifier.VerifyWithKey(_tempFile, _sha256, "!!!not-base64!!!", _publicKey);
         Assert.NotNull(err);
         Assert.Contains("base64", err);
     }
@@ -132,7 +132,7 @@ public class VerifierTests : IDisposable
         // Com a chave embarcada configurada, Verify não pode mais abortar com
         // "not configured": a assinatura aqui é de outra chave, então deve
         // falhar na verificação Ed25519, provando que o caminho cripto rodou.
-        string err = Verifier.Verify(_tempFile, _sha256, _signatureBase64);
+        string? err = Verifier.Verify(_tempFile, _sha256, _signatureBase64);
         Assert.NotNull(err);
         Assert.DoesNotContain("not configured", err);
         Assert.Contains("Ed25519", err);

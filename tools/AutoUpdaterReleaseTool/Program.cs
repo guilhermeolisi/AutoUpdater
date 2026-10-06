@@ -93,7 +93,7 @@ internal static class Program
         string osKey      = RequireOption(args, "--os");
         string url        = RequireOption(args, "--url");
         string manifestPath = GetOption(args, "--manifest") ?? "version.json";
-        string minVersion = GetOption(args, "--min-version");
+        string? minVersion = GetOption(args, "--min-version");
 
         if (!File.Exists(zipPath))
             throw new FileNotFoundException($"Zip not found: {zipPath}");
@@ -152,7 +152,7 @@ internal static class Program
         string zipPath      = RequireOption(args, "--zip");
         string osKey        = RequireOption(args, "--os");
         string manifestPath = GetOption(args, "--manifest") ?? "version.json";
-        string publicKeyB64 = GetOption(args, "--public-key");
+        string? publicKeyB64 = GetOption(args, "--public-key");
 
         if (!File.Exists(zipPath))
             throw new FileNotFoundException($"Zip not found: {zipPath}");
@@ -162,7 +162,7 @@ internal static class Program
             throw new ArgumentException($"--os must be '<os>-<arch>' (os: windows|linux|macos, arch: x86|x64|arm64|arm), e.g. windows-x64. Got: {osKey}");
 
         VersionManifest manifest = VersionManifest.Parse(File.ReadAllText(manifestPath));
-        if (manifest?.Artifacts is null || !manifest.Artifacts.TryGetValue(osKey, out ArtifactInfo info))
+        if (manifest?.Artifacts is null || !manifest.Artifacts.TryGetValue(osKey, out ArtifactInfo? info))
             throw new Exception($"Manifest has no entry for OS '{osKey}'");
 
         // Reuse Verifier when public key is configured in PublicKey.cs;
@@ -188,7 +188,7 @@ internal static class Program
         }
         else
         {
-            string err = Verifier.Verify(zipPath, info.Sha256, info.Signature);
+            string? err = Verifier.Verify(zipPath, info.Sha256, info.Signature);
             if (err is not null)
             {
                 Console.Error.WriteLine("FAIL: " + err);
@@ -278,13 +278,13 @@ internal static class Program
 
     private static string RequireOption(string[] args, string name)
     {
-        string value = GetOption(args, name);
+        string? value = GetOption(args, name);
         if (string.IsNullOrEmpty(value))
             throw new ArgumentException($"Missing required option: {name}");
         return value;
     }
 
-    private static string GetOption(string[] args, string name)
+    private static string? GetOption(string[] args, string name)
     {
         for (int i = 0; i < args.Length - 1; i++)
         {
@@ -297,7 +297,7 @@ internal static class Program
     private static bool HasFlag(string[] args, string name) =>
         args.Any(a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
 
-    private static int PrintUsageAndReturn(int code, string message = null)
+    private static int PrintUsageAndReturn(int code, string? message = null)
     {
         if (!string.IsNullOrEmpty(message))
             Console.Error.WriteLine(message);

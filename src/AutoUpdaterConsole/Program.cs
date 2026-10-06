@@ -22,12 +22,12 @@ if (os < 0)
     return;
 }
 
-Version versionOld, versionNew;
-string manifestUrl, folderToInstall, emailToReportIssue, nameProgram;
+Version? versionOld, versionNew;
+string? manifestUrl, folderToInstall, emailToReportIssue, nameProgram;
 int callerPid;
 bool relaunchCaller;
 bool isFirst = true;
-string error;
+string? error;
 
 error = Services.ProcessArg(args, out versionOld, out versionNew, out manifestUrl,
                             out folderToInstall, out emailToReportIssue, out nameProgram,
@@ -41,7 +41,7 @@ bool recoveredFromLegacy = false;
 if (!string.IsNullOrWhiteSpace(error))
 {
     string[] legacyArgs = Services.TokenizeArgsLenient(Environment.CommandLine);
-    string legacyError = Services.ProcessArg(legacyArgs, out versionOld, out versionNew, out manifestUrl,
+    string? legacyError = Services.ProcessArg(legacyArgs, out versionOld, out versionNew, out manifestUrl,
                                              out folderToInstall, out emailToReportIssue, out nameProgram,
                                              out callerPid, out relaunchCaller);
     if (string.IsNullOrWhiteSpace(legacyError))
@@ -62,6 +62,10 @@ if (!string.IsNullOrWhiteSpace(error))
     ProcessError(error);
     return;
 }
+
+// Sem erro, ProcessArg preencheu todos os argumentos; a guarda so torna o contrato explicito.
+if (manifestUrl is null || folderToInstall is null || nameProgram is null)
+    throw new InvalidOperationException("ProcessArg reported no error but left an argument unset.");
 
 if (!Connectivity.IsEndpointReachable(manifestUrl))
 {
@@ -105,7 +109,7 @@ UpdaterLog.Info($"Downloading artifact from {artifact.Url}");
 DownloadNewVersion(artifact.Url, fileNameDownloaded);
 
 Console.Write("Verifying package integrity and signature... ");
-string verifyError = Verifier.Verify(fileNameDownloaded, artifact.Sha256, artifact.Signature);
+string? verifyError = Verifier.Verify(fileNameDownloaded, artifact.Sha256, artifact.Signature);
 if (!string.IsNullOrWhiteSpace(verifyError))
 {
     Console.WriteLine();
@@ -217,7 +221,7 @@ ArtifactInfo DownloadAndParseManifest(string url, string repository)
         throw new Exception("Manifest is invalid (missing 'artifacts')");
 
     string osKey = OsKey.Current();
-    if (!manifest.Artifacts.TryGetValue(osKey, out ArtifactInfo info))
+    if (!manifest.Artifacts.TryGetValue(osKey, out ArtifactInfo? info))
         throw new Exception($"Manifest has no entry for '{osKey}'");
 
     return info;

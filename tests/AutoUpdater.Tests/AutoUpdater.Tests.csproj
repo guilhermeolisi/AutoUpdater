@@ -7,7 +7,6 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <!-- Tests intentionally pass null/garbage to verify error handling -->
-    <NoWarn>CS8600;CS8601;CS8602;CS8603;CS8604;CS8625</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

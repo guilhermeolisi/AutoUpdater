@@ -146,7 +146,7 @@ internal sealed class PassphraseVault : IKeyVault
 
     private static string GetPassphrase(string prompt, bool confirm)
     {
-        string env = Environment.GetEnvironmentVariable("AUTOUPDATER_PASSPHRASE");
+        string? env = Environment.GetEnvironmentVariable("AUTOUPDATER_PASSPHRASE");
         if (!string.IsNullOrEmpty(env))
             return env;
 
@@ -171,7 +171,7 @@ internal sealed class PassphraseVault : IKeyVault
         // input is redirected (e.g. piped from a file).
         if (Console.IsInputRedirected)
         {
-            string line = Console.ReadLine();
+            string? line = Console.ReadLine();
             return line ?? string.Empty;
         }
 

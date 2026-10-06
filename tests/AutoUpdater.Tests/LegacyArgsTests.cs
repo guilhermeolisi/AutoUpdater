@@ -45,7 +45,7 @@ public class LegacyArgsTests
                      "\"C:\\app\\Sindarin-windows-x64\\\" \"\" \"Sindarin\" \"1234\"";
 
         string[] recovered = Services.TokenizeArgsLenient(cmd);
-        string err = Services.ProcessArg(recovered,
+        string? err = Services.ProcessArg(recovered,
             out var oldV, out var newV, out var url, out var folder,
             out var email, out var name, out var pid, out var relaunch);
 
@@ -66,7 +66,7 @@ public class LegacyArgsTests
         string cmd = "\"updater.exe\" \"1.0.0\" \"1.1.0\" \"u\" \"C:\\x\\\" \"\" \"App\" \"10\" \"0\"";
 
         string[] recovered = Services.TokenizeArgsLenient(cmd);
-        string err = Services.ProcessArg(recovered,
+        string? err = Services.ProcessArg(recovered,
             out _, out _, out _, out var folder, out _, out _, out var pid, out var relaunch);
 
         Assert.Null(err);
