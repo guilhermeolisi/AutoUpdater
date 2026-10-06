@@ -6,7 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
-    <!-- Application code with flow-sensitive null guards the compiler can't fully track -->
     <!-- Publicado com Native AOT (perfis win-x64/arm64) ou trimming (demais).
          Usa BaseLibrary.Console (já compatibilizado com Native AOT) para a
          barra de progresso, evitando código duplicado no updater. -->

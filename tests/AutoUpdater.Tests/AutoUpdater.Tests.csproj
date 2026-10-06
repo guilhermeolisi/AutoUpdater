@@ -6,7 +6,6 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- Tests intentionally pass null/garbage to verify error handling -->
   </PropertyGroup>
 
   <ItemGroup>

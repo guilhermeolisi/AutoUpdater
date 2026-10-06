@@ -7,7 +7,6 @@
     <Nullable>enable</Nullable>
     <RootNamespace>AutoUpdaterReleaseTool</RootNamespace>
     <AssemblyName>AutoUpdaterReleaseTool</AssemblyName>
-    <!-- Application code with flow-sensitive null guards the compiler can't fully track -->
   </PropertyGroup>
 
   <ItemGroup>
